@@ -569,4 +569,7 @@
   $$('.nav-item').forEach(item => item.addEventListener('click', () => navigate(item.dataset.page)));
   $('#todayText').textContent = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
   renderPage();
+  if (typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {}));
+  }
 })();
