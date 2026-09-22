@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <div class="app-shell" id="appShell">
       <aside class="sidebar" aria-label="القائمة الرئيسية">
         <a class="brand" href="#dashboard" aria-label="رصيد، الرئيسية">
           <span class="brand-mark"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M9 12.5A3.5 3.5 0 0 1 12.5 9H30a3 3 0 0 1 3 3v2H14a5 5 0 0 0 0 10h19v3a4 4 0 0 1-4 4H12.5A3.5 3.5 0 0 1 9 27.5z" fill="currentColor"/><path d="M14 16h18a4 4 0 0 1 0 8H14a4 4 0 0 1 0-8Z" fill="#122338" stroke="currentColor" stroke-width="2.4"/><circle cx="28" cy="20" r="1.4" fill="currentColor"/></svg></span>
@@ -26,12 +26,14 @@
           <button class="nav-item active" data-page="dashboard"><span class="nav-icon" data-icon="grid"></span><span>لوحة التحكم</span></button>
           <button class="nav-item" data-page="transactions"><span class="nav-icon" data-icon="swap"></span><span>العمليات</span><span class="nav-count" id="transactionCount">0</span></button>
           <button class="nav-item" data-page="accounts"><span class="nav-icon" data-icon="wallet"></span><span>حساباتي</span></button>
+          <button class="nav-item" data-page="projects"><span class="nav-icon" data-icon="briefcase"></span><span>المشاريع</span></button>
+          <button class="nav-item" data-page="clients"><span class="nav-icon" data-icon="user"></span><span>العملاء</span></button>
           <button class="nav-item" data-page="debts"><span class="nav-icon" data-icon="people"></span><span>الديون والالتزامات</span><span class="nav-dot"></span></button>
           <button class="nav-item" data-page="reports"><span class="nav-icon" data-icon="chart"></span><span>التقارير والكشوف</span></button>
         </nav>
         <div class="sidebar-spacer"></div>
         <div class="sidebar-note"><span class="note-icon" data-icon="shield"></span><div><b>بياناتك تبقى لك</b><p>تُحفظ بياناتك على هذا الجهاز فقط.</p></div></div>
-        <div class="profile"><span class="avatar">ر</span><div class="profile-copy"><strong>حسابك الشخصي</strong><small>مساحة مالية خاصة</small></div><button class="icon-button profile-menu" aria-label="خيارات الحساب" data-action="profile">⋯</button></div>
+        <div class="profile"><span class="avatar" id="profileAvatar">ر</span><div class="profile-copy"><strong id="profileName">ملفي المالي</strong><small>مساحة مالية خاصة</small></div><button class="icon-button profile-menu" aria-label="تعديل الملف الشخصي" data-action="profile">⋯</button></div>
       </aside>
 
       <main class="main-area">
@@ -48,6 +50,14 @@
         <section id="pageContent" class="page-content" aria-live="polite"></section>
       </main>
     </div>
+    <nav class="mobile-bottom-nav" aria-label="التنقل السريع">
+      <button class="mobile-nav-item active" data-page="dashboard"><span data-icon="grid"></span><small>الرئيسية</small></button>
+      <button class="mobile-nav-item" data-page="transactions"><span data-icon="swap"></span><small>العمليات</small></button>
+      <button class="mobile-nav-item" data-page="accounts"><span data-icon="wallet"></span><small>الحسابات</small></button>
+      <button class="mobile-nav-item" data-page="projects"><span data-icon="briefcase"></span><small>المشاريع</small></button>
+      <button class="mobile-nav-item" data-action="open-more-nav"><span data-icon="dots"></span><small>المزيد</small></button>
+    </nav>
+    <div id="mobileMenuRoot"></div>
     <div id="modalRoot"></div>
     <div id="toastRoot" class="toast-root" aria-live="polite" aria-atomic="true"></div>
     <script src="./app.js" defer></script>

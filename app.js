@@ -4,7 +4,7 @@
   const CURRENCY_NAMES = { SAR: 'ريال سعودي', YER: 'ريال يمني', USD: 'دولار أمريكي' };
   const TYPE_NAMES = { income: 'دخل', expense: 'مصروف', transfer: 'تحويل', lend: 'إقراض', borrow: 'اقتراض', debt_collection: 'تحصيل دين', debt_payment: 'سداد دين' };
   const TYPE_SIGNS = { income: '+', expense: '−', transfer: '↔', lend: '−', borrow: '+', debt_collection: '+', debt_payment: '−' };
-  const PAGE_NAMES = { dashboard: 'لوحة التحكم', transactions: 'العمليات', accounts: 'حساباتي', debts: 'الديون والالتزامات', reports: 'التقارير والكشوف' };
+  const PAGE_NAMES = { dashboard: 'لوحة التحكم', transactions: 'العمليات', accounts: 'الحسابات والمحافظ', projects: 'المشاريع', clients: 'العملاء', debts: 'الديون والالتزامات', reports: 'التقارير والكشوف' };
   const ICONS = {
     grid: '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.7"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.7"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.7"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.7"/></svg>',
     swap: '<svg viewBox="0 0 24 24"><path d="M7 7h13l-3-3M17 17H4l3 3"/><path d="M20 7l-3 3M4 17l3-3"/></svg>',
@@ -25,7 +25,11 @@
     clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
     dots: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
     check: '<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>',
-    card: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></svg>'
+    card: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
+    briefcase: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></svg>',
+    user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+    phone: '<svg viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M10 17h4"/></svg>',
+    mail: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>'
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -94,27 +98,61 @@
       { id: 'd3', direction: 'payable', person: 'سارة محمد', description: 'مبلغ مستحق لمشتريات مشتركة', currency: 'SAR', original: 950, remaining: 450, dueDate: toISO(Date.now() - 2 * 86400000), createdAt: toISO(Date.now() - 18 * 86400000) },
       { id: 'd4', direction: 'receivable', person: 'عميل تصميم', description: 'دفعة بالدولار — مرحلة ثانية', currency: 'USD', original: 800, remaining: 800, dueDate: toISO(Date.now() + 21 * 86400000), createdAt: toISO(Date.now() - 7 * 86400000) }
     ];
-    return { version: 1, accounts, transactions, debts, currency: 'SAR', dashboardMonth: toISO(Date.now()).slice(0, 7), demo: true };
+    const clients = [
+      { id: 'c-studio', name: 'شركة مسارات', phone: '', email: '', notes: '' },
+      { id: 'c-nuqta', name: 'مؤسسة نقطة ضوء', phone: '', email: '', notes: '' },
+      { id: 'c-ahmad', name: 'أحمد العريقي', phone: '', email: '', notes: '' }
+    ];
+    const projects = [
+      { id: 'p-identity', name: 'هوية بصرية — مسارات', clientId: 'c-studio', amount: 6500, currency: 'SAR', status: 'in_progress', dueDate: '', notes: '' },
+      { id: 'p-campaign', name: 'حملة إعلانية رقمية', clientId: 'c-nuqta', amount: 3200, currency: 'SAR', status: 'in_progress', dueDate: '', notes: '' },
+      { id: 'p-content', name: 'محتوى شهري', clientId: '', amount: 140000, currency: 'YER', status: 'completed', dueDate: '', notes: '' }
+    ];
+    transactions[0].clientId = 'c-studio'; transactions[0].projectId = 'p-identity';
+    transactions[4].projectId = 'p-content';
+    return { version: 2, profile: { name: 'تجربة رصيد', currency: 'SAR' }, setupComplete: true, accounts, transactions, debts, projects, clients, currency: 'SAR', dashboardMonth: toISO(Date.now()).slice(0, 7), demo: true };
+  }
+
+  function emptyState() {
+    return { version: 2, profile: { name: '', currency: 'SAR' }, setupComplete: false, accounts: [], transactions: [], debts: [], projects: [], clients: [], currency: 'SAR', dashboardMonth: toISO(Date.now()).slice(0, 7), demo: false };
   }
 
   function loadState() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (saved?.version === 1 && Array.isArray(saved.accounts) && Array.isArray(saved.transactions)) return { ...demoState(), ...saved };
+      if ([1, 2].includes(saved?.version) && Array.isArray(saved.accounts) && Array.isArray(saved.transactions)) {
+        const migrated = { ...emptyState(), ...saved, version: 2 };
+        migrated.profile = { ...emptyState().profile, ...(saved.profile || {}) };
+        migrated.projects = Array.isArray(saved.projects) ? saved.projects : [];
+        migrated.clients = Array.isArray(saved.clients) ? saved.clients : [];
+        migrated.debts = Array.isArray(saved.debts) ? saved.debts : [];
+        if (saved.version === 1) migrated.setupComplete = Boolean(saved.demo || saved.accounts.length || saved.transactions.length || migrated.debts.length);
+        return migrated;
+      }
     } catch (error) { console.warn('Could not read saved ledger', error); }
-    return demoState();
+    return emptyState();
   }
 
   let state = loadState();
   let activePage = 'dashboard';
+  let onboardingStep = state.setupDraft?.step || 1;
+  let onboardingAccounts = state.setupDraft?.accounts || [];
+  let onboardingDebts = state.setupDraft?.debts || [];
   let transactionFilters = { query: '', kind: 'all', currency: 'all', month: 'all' };
   let reportCurrency = 'SAR';
 
   function saveState() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    try { state.version = 2; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     catch (error) { toast('تعذر حفظ البيانات. تحقق من مساحة التخزين في المتصفح.', 'error'); }
   }
+  function persistSetupDraft() {
+    state.setupDraft = { step: onboardingStep, accounts: onboardingAccounts, debts: onboardingDebts };
+    saveState();
+  }
   function accountById(id) { return state.accounts.find(account => account.id === id); }
+  function clientById(id) { return state.clients.find(client => client.id === id); }
+  function projectById(id) { return state.projects.find(project => project.id === id); }
+  function transactionParty(tx) { return clientById(tx.clientId)?.name || tx.party || '—'; }
   function accountBalance(id) {
     const account = accountById(id);
     if (!account) return 0;
@@ -151,6 +189,10 @@
   function accountTypeLabel(account) {
     return ({ bank: 'حساب بنكي', wallet: 'محفظة إلكترونية', cash: 'نقدي' })[account.kind] || 'حساب';
   }
+  function normalizedProvider(kind, provider) {
+    if (kind === 'cash') return 'cash';
+    return provider === 'cash' ? 'other' : provider;
+  }
   function kindClass(kind) { return kind; }
   function amountClass(kind) { return ['income', 'borrow', 'debt_collection'].includes(kind) ? 'positive' : ['expense', 'lend', 'debt_payment'].includes(kind) ? 'negative' : 'neutral'; }
   function amountHTML(tx) { return `<span class="amount ${amountClass(tx.kind)}">${TYPE_SIGNS[tx.kind] || ''}${nfmt(tx.amount)} <span>${CURRENCIES[tx.currency]}</span></span>`; }
@@ -170,12 +212,32 @@
   function pageHead(title, subtitle, actions = '') {
     return `<div class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div><div class="heading-actions">${actions}</div></div>`;
   }
+  function renderOnboarding() {
+    const page = $('#pageContent');
+    $('#appShell').classList.add('onboarding-mode');
+    $('#pageTitle').textContent = 'إعداد مساحتك المالية';
+    $('#demoPill').hidden = true;
+    const progress = `<div class="setup-progress"><span class="${onboardingStep >= 1 ? 'complete' : ''}"></span><span class="${onboardingStep >= 2 ? 'complete' : ''}"></span></div><div class="setup-steps"><span class="${onboardingStep === 1 ? 'current' : ''}">١. الملف الشخصي</span><span class="${onboardingStep === 2 ? 'current' : ''}">٢. الحسابات والديون</span></div>`;
+    if (onboardingStep === 1) return `<div class="onboarding-wrap"><div class="onboarding-brand"><span class="brand-mark">${icon('wallet')}</span><span>رَصيد</span></div><section class="onboarding-card"><div class="onboarding-intro"><span class="eyebrow">إعداد لمرة واحدة</span><h1>ابدأ بمساحتك المالية</h1><p>عرّف ملفك الشخصي وحدد عملة العرض الأساسية. بياناتك تبقى محفوظة على هذا الجهاز.</p></div>${progress}<form class="onboarding-form" id="onboardingProfileForm"><div class="form-field"><label for="ownerName">الاسم أو اسم النشاط</label><input id="ownerName" name="name" required maxlength="60" placeholder="مثال: خالد الرحماني" value="${escapeHTML(state.profile?.name || '')}" autocomplete="name"/></div><div class="form-field"><label for="baseCurrency">عملة العرض الأساسية</label><select id="baseCurrency" name="currency">${currencyOptions(state.profile?.currency || state.currency)}</select><span class="helper">يمكنك تسجيل حسابات بعملات مختلفة؛ لا يجري تحويل تلقائي بينها.</span></div><button class="button button-primary onboarding-next" type="submit">التالي: إضافة حساباتك ${icon('arrow')}</button></form><div class="onboarding-foot">لا يتطلب التطبيق كلمة مرور أو ربطًا مصرفيًا؛ الحساب هنا ملف محلي لتنظيم سجلاتك.</div></section></div>`;
+    const accounts = onboardingAccounts.map((account, index) => `<div class="setup-record"><span class="setup-record-icon ${account.kind}">${escapeHTML(accountSymbol(account))}</span><div class="setup-record-main"><strong>${escapeHTML(account.name)}</strong><small>${accountTypeLabel(account)} · ${CURRENCY_NAMES[account.currency]}</small></div><b>${nfmt(account.openingBalance)} ${CURRENCIES[account.currency]}</b><button class="setup-remove" aria-label="إزالة الحساب" data-action="remove-setup-account" data-index="${index}">×</button></div>`).join('') || '<div class="setup-empty">أضف حسابًا واحدًا على الأقل لبدء استخدام رصيد.</div>';
+    const debts = onboardingDebts.map((debt, index) => `<div class="setup-record"><span class="setup-record-icon ${debt.direction}">${debt.direction === 'receivable' ? '↑' : '↓'}</span><div class="setup-record-main"><strong>${escapeHTML(debt.person)}</strong><small>${debt.direction === 'receivable' ? 'مبلغ مستحق لك' : 'التزام عليك'}</small></div><b>${nfmt(debt.original)} ${CURRENCIES[debt.currency]}</b><button class="setup-remove" aria-label="إزالة الدين" data-action="remove-setup-debt" data-index="${index}">×</button></div>`).join('') || '<div class="setup-empty">يمكنك تسجيل ديونك الحالية الآن أو إضافتها لاحقًا.</div>';
+    return `<div class="onboarding-wrap setup-wide"><div class="onboarding-brand"><span class="brand-mark">${icon('wallet')}</span><span>رَصيد</span></div><section class="onboarding-card"><div class="onboarding-intro"><span class="eyebrow">الخطوة الثانية</span><h1>أضف حساباتك وأرصدتك</h1><p>ابدأ بالنقد والبنوك والمحافظ التي تستخدمها، ثم سجّل أي مبالغ مستحقة لك أو عليك.</p></div>${progress}<div class="setup-columns"><section class="setup-panel"><div class="setup-panel-heading"><div><h2>الحسابات والمحافظ</h2><p>الرصيد الحالي عند بدء الاستخدام</p></div><span class="setup-count">${onboardingAccounts.length}</span></div><div class="setup-record-list">${accounts}</div><form class="setup-add-form" id="onboardingAccountForm"><div class="form-grid"><div class="form-field full"><label>اسم الحساب</label><input name="name" required maxlength="55" placeholder="مثال: كاش سعودي أو بنك الكريمي"/></div><div class="form-field"><label>نوع الحساب</label><select name="kind"><option value="cash">نقدي</option><option value="bank">حساب بنكي</option><option value="wallet">محفظة إلكترونية</option></select></div><div class="form-field"><label>الجهة / المزود</label><select name="provider"><option value="cash">نقدي</option><option value="kuraimi">بنك الكريمي</option><option value="qutaibi">بنك القطيبي</option><option value="qasimi">بنك القاسمي</option><option value="jib">محفظة جيب</option><option value="rajhi">مصرف الراجحي</option><option value="alinma">مصرف الإنماء</option><option value="ahli">البنك الأهلي</option><option value="other">أخرى</option></select></div><div class="form-field"><label>العملة</label><select name="currency">${currencyOptions(state.currency)}</select></div><div class="form-field"><label>الرصيد الحالي</label><input name="openingBalance" type="number" step="any" inputmode="decimal" value="0" required/></div></div><button class="button button-secondary button-sm" type="submit">${icon('plus')} إضافة للحسابات</button></form></section><section class="setup-panel"><div class="setup-panel-heading"><div><h2>الديون والالتزامات</h2><p>أرصدة قائمة قبل بدء التسجيل</p></div><span class="setup-count">${onboardingDebts.length}</span></div><div class="setup-record-list">${debts}</div><form class="setup-add-form" id="onboardingDebtForm"><div class="form-grid"><div class="form-field"><label>نوع المبلغ</label><select name="direction"><option value="receivable">مستحق لي</option><option value="payable">التزام عليّ</option></select></div><div class="form-field"><label>الشخص أو الجهة</label><input name="person" required maxlength="70" placeholder="اسم الشخص أو العميل"/></div><div class="form-field"><label>المبلغ المتبقي</label><input name="amount" type="number" min="0.01" step="any" required/></div><div class="form-field"><label>العملة</label><select name="currency">${currencyOptions(state.currency)}</select></div><div class="form-field full"><label>التفاصيل (اختياري)</label><input name="description" maxlength="110" placeholder="سبب الدين أو تاريخ الاستحقاق"/></div></div><button class="button button-secondary button-sm" type="submit">${icon('plus')} إضافة سجل دين</button></form></section></div><div class="setup-footer"><button class="button button-quiet" data-action="setup-back">رجوع</button><span class="setup-hint">يمكنك إضافة أو تعديل الحسابات لاحقًا من صفحة الحسابات.</span><button class="button button-primary" data-action="finish-setup">إنهاء الإعداد والبدء</button></div></section></div>`;
+  }
   function button(label, action, secondary = false, extra = '') {
     return `<button class="button ${secondary ? 'button-secondary' : 'button-primary'} ${extra}" data-action="${action}">${label}</button>`;
   }
   function metricCard(title, value, currency, kind, foot) {
     const icons = { income: 'up', expense: 'down', net: 'chart' };
     return `<article class="metric-card"><div class="metric-top"><span>${title}</span><span class="metric-icon ${kind}">${icon(icons[kind])}</span></div><div class="metric-value">${nfmt(value)} <small>${CURRENCIES[currency]}</small></div><div class="metric-foot">${foot}</div></article>`;
+  }
+  function dashboardProjectLines() {
+    const active = state.projects.filter(project => project.status === 'in_progress').slice(0, 3);
+    if (!active.length) return `<div class="empty-state compact-empty"><p>لا توجد مشاريع قيد التنفيذ.</p><button class="inline-link" data-action="new-project">إضافة مشروعك الأول</button></div>`;
+    return active.map(project => {
+      const totals = projectTotals(project);
+      const ratio = project.amount > 0 ? Math.min(100, Math.round(totals.received / project.amount * 100)) : 0;
+      return `<button class="dashboard-project" data-action="edit-project" data-id="${project.id}"><span class="dashboard-project-icon">${icon('briefcase')}</span><span class="dashboard-project-main"><b>${escapeHTML(project.name)}</b><small>${escapeHTML(clientById(project.clientId)?.name || 'بدون عميل مرتبط')}</small><i><span style="width:${ratio}%"></span></i></span><strong>${nfmt(totals.due)} ${CURRENCIES[project.currency]}</strong></button>`;
+    }).join('');
   }
   function chartPath(values, width, height, padding = 7) {
     const max = Math.max(...values, 1) * 1.15;
@@ -204,7 +266,7 @@
   function transactionRows(transactions, withActions = false) {
     const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || ''));
     if (!sorted.length) return `<tr><td colspan="${withActions ? 6 : 5}" class="table-empty">لا توجد عمليات مطابقة. سجّل أول عملية لبدء ترتيب حساباتك.</td></tr>`;
-    return sorted.map(tx => `<tr><td><div class="transaction-name">${transactionSymbol(tx.kind)}<div><div class="transaction-desc">${escapeHTML(tx.title || TYPE_NAMES[tx.kind])}</div><div class="transaction-sub">${escapeHTML(tx.category || TYPE_NAMES[tx.kind])}</div></div></div></td><td>${escapeHTML(tx.party || '—')}</td><td>${escapeHTML(transactionAccountText(tx))}</td><td>${prettyDate(tx.date)}</td><td>${amountHTML(tx)}</td>${withActions ? `<td><button class="table-action" aria-label="خيارات العملية" data-action="transaction-menu" data-id="${tx.id}">⋯</button></td>` : ''}</tr>`).join('');
+    return sorted.map(tx => `<tr><td><div class="transaction-name">${transactionSymbol(tx.kind)}<div><div class="transaction-desc">${escapeHTML(tx.title || TYPE_NAMES[tx.kind])}</div><div class="transaction-sub">${escapeHTML(tx.category || TYPE_NAMES[tx.kind])}${projectById(tx.projectId) ? ` · ${escapeHTML(projectById(tx.projectId).name)}` : ''}</div></div></div></td><td>${escapeHTML(transactionParty(tx))}</td><td>${escapeHTML(transactionAccountText(tx))}</td><td>${prettyDate(tx.date)}</td><td>${amountHTML(tx)}</td>${withActions ? `<td><button class="table-action" aria-label="خيارات العملية" data-action="transaction-menu" data-id="${tx.id}">⋯</button></td>` : ''}</tr>`).join('');
   }
   function kindFilterOptions(selected = 'all') {
     return `<option value="all" ${selected === 'all' ? 'selected' : ''}>كل الأنواع</option>${['income', 'expense', 'transfer', 'lend', 'borrow', 'debt_collection', 'debt_payment'].map(kind => `<option value="${kind}" ${selected === kind ? 'selected' : ''}>${TYPE_NAMES[kind]}</option>`).join('')}`;
@@ -229,7 +291,7 @@
     const debtOut = state.debts.filter(d => d.direction === 'payable' && d.currency === currency).reduce((s, d) => s + d.remaining, 0);
     const currentTransactions = state.transactions.filter(tx => tx.currency === currency && monthKey(tx.date) === month);
     const recent = [...currentTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
-    return `${pageHead('مرحبًا، هذه لمحتك المالية', 'تابع دخلك ومصروفاتك وأرصدتك في مكان واحد.', `${state.demo ? '<button class="button button-quiet button-sm" data-action="clear-demo">ابدأ ببياناتي</button>' : ''}<button class="button button-secondary" data-action="export-month">${icon('download')} تصدير كشف</button><button class="button button-primary" data-action="new-transaction">${icon('plus')} إضافة عملية</button>`)}
+    return `${pageHead(`مرحبًا${state.profile?.name ? `، ${escapeHTML(state.profile.name)}` : ''}`, 'هذه لمحتك المالية؛ تابع الأرصدة والدفعات والمشاريع من مكان واحد.', `${state.demo ? '<button class="button button-quiet button-sm" data-action="clear-demo">ابدأ ببياناتي</button>' : ''}<button class="button button-secondary" data-action="export-month">${icon('download')} تصدير كشف</button><button class="button button-primary" data-action="new-transaction">${icon('plus')} إضافة عملية</button>`)}
       <div class="summary-strip"><div class="currency-switch"><span>عرض ملخص العملة</span><div class="segmented" role="group" aria-label="اختيار العملة">${Object.keys(CURRENCIES).map(code => `<button class="segment ${currency === code ? 'active' : ''}" data-action="set-currency" data-currency="${code}">${code}</button>`).join('')}</div><select class="period-select" id="dashboardMonth" aria-label="اختيار الشهر">${months.map(m => `<option value="${m}" ${m === month ? 'selected' : ''}>${monthName(m)}</option>`).join('')}</select><span class="period-label">الأرصدة لا تُحوّل بين العملات</span></div><div></div></div>
       <div class="metric-grid">${metricCard('إجمالي الدخل', income, currency, 'income', `${incomeDelta === null ? '—' : `<span class="trend ${incomeDelta < 0 ? 'down' : ''}">${incomeDelta > 0 ? '+' : ''}${incomeDelta}%</span>`} <span>مقارنة بالشهر السابق</span>`)}${metricCard('إجمالي المصروفات', expenses, currency, 'expense', `${expenseDelta === null ? '—' : `<span class="trend ${expenseDelta > 0 ? 'down' : ''}">${expenseDelta > 0 ? '+' : ''}${expenseDelta}%</span>`} <span>مقارنة بالشهر السابق</span>`)}${metricCard('صافي التدفق النقدي', net, currency, 'net', `<span>${net >= 0 ? 'فائض هذا الشهر' : 'عجز هذا الشهر'}</span>`)}</div>
       <div class="overview-grid"><article class="card chart-card"><div class="card-header"><div><h2 class="card-title">الدخل والمصروفات</h2><div class="card-subtitle">ملخص آخر 6 أشهر · ${CURRENCY_NAMES[currency]}</div></div><div class="chart-legend"><span class="legend-key"><i></i> الدخل</span><span class="legend-key out"><i></i> المصروفات</span></div></div><div class="card-body">${renderChart(currency)}</div></article>
@@ -237,13 +299,13 @@
       <div class="section-row"><h2>أحدث العمليات</h2><button data-page="transactions">عرض كل العمليات ${icon('arrow')}</button></div>
       <article class="card transaction-card"><table class="transaction-table"><thead><tr><th>العملية</th><th>الجهة</th><th>الحساب</th><th>التاريخ</th><th>المبلغ</th></tr></thead><tbody>${transactionRows(recent)}</tbody></table></article>
       <div class="lower-grid"><section><div class="section-row"><h2>الديون والالتزامات · ${currency}</h2><button data-page="debts">التفاصيل ${icon('arrow')}</button></div><article class="card"><div class="card-body" style="padding-top:15px"><div class="debt-summary"><div class="debt-box receivable"><span>مبالغ لي عند الآخرين</span><strong>${nfmt(debtIn)}<small>${CURRENCIES[currency]}</small></strong></div><div class="debt-box payable"><span>مبالغ عليّ للآخرين</span><strong>${nfmt(debtOut)}<small>${CURRENCIES[currency]}</small></strong></div></div></div></article></section>
-        <section><div class="section-row"><h2>آخر التحديثات</h2></div><article class="card"><div class="card-body"><div class="activity-list">${recent.slice(0, 3).map(tx => `<div class="activity-item"><span class="activity-bullet ${tx.kind === 'expense' ? 'orange' : ''}"></span><div class="activity-copy"><strong>${escapeHTML(tx.title)}</strong><span>${prettyDate(tx.date)} · ${escapeHTML(tx.category || TYPE_NAMES[tx.kind])}</span></div><span class="activity-amount">${TYPE_SIGNS[tx.kind] || ''}${nfmt(tx.amount)} ${CURRENCIES[tx.currency]}</span></div>`).join('') || '<div class="empty-state"><p>لا توجد تحديثات لهذا الشهر.</p></div>'}</div></div></article></section></div>`;
+        <section><div class="section-row"><h2>مشاريعي النشطة</h2><button data-page="projects">عرض الكل ${icon('arrow')}</button></div><article class="card"><div class="card-body"><div class="dashboard-project-list">${dashboardProjectLines()}</div></div></article></section></div>`;
   }
 
   function filteredTransactions() {
     const q = transactionFilters.query.trim().toLowerCase();
     return state.transactions.filter(tx => {
-      const queryHit = !q || [tx.title, tx.category, tx.party, accountById(tx.accountId)?.name, accountById(tx.fromAccountId)?.name, accountById(tx.toAccountId)?.name].some(value => String(value || '').toLowerCase().includes(q));
+      const queryHit = !q || [tx.title, tx.category, transactionParty(tx), accountById(tx.accountId)?.name, accountById(tx.fromAccountId)?.name, accountById(tx.toAccountId)?.name, projectById(tx.projectId)?.name].some(value => String(value || '').toLowerCase().includes(q));
       return queryHit && (transactionFilters.kind === 'all' || tx.kind === transactionFilters.kind) && (transactionFilters.currency === 'all' || tx.currency === transactionFilters.currency) && (transactionFilters.month === 'all' || monthKey(tx.date) === transactionFilters.month);
     });
   }
@@ -262,6 +324,43 @@
       return `<div class="account-group-heading"><h2>${CURRENCY_NAMES[currency]} <span style="font-weight:400;color:#8996a3">(${currency})</span></h2><span>${accounts.length} حسابات · الإجمالي ${nfmt(sumAccounts(currency))} ${CURRENCIES[currency]}</span></div><div class="account-grid">${accounts.map(account => `<article class="card account-tile"><div class="tile-top"><span class="tile-logo ${accountClass(account)}">${escapeHTML(accountSymbol(account))}</span><div><div class="tile-name">${escapeHTML(account.name)}</div><div class="tile-kind">${accountTypeLabel(account)} · ${CURRENCY_NAMES[currency]}</div></div><button class="table-action account-edit-button" aria-label="تعديل الحساب" data-action="edit-account" data-id="${account.id}">⋯</button></div><div class="tile-balance">${nfmt(accountBalance(account.id))}<small>${CURRENCIES[currency]}</small></div><div class="tile-bottom"><span>الرصيد الحالي</span><span>تتبّع يدوي</span></div></article>`).join('')}<button class="add-account-tile" data-action="new-account">${icon('plusCircle')}<span>إضافة حساب جديد</span></button></div>`;
     }).join('');
     return `${pageHead('حساباتي', 'اجمع حساباتك البنكية والمحافظ والنقد في مكان واحد.', `<button class="button button-primary" data-action="new-account">${icon('plus')} إضافة حساب</button>`)}<div class="modal-note page-block">أضف الحسابات التي تريد تتبّعها يدويًا. رصيد البداية والعمليات المسجلة تبقى منفصلة لكل عملة؛ التطبيق لا يتصل بالبنوك أو المحافظ.</div>${html}`;
+  }
+
+  const PROJECT_STATUS = { in_progress: 'قيد التنفيذ', completed: 'مكتمل', paused: 'متوقف' };
+  function projectTotals(project) {
+    const txs = state.transactions.filter(tx => tx.projectId === project.id && tx.currency === project.currency);
+    const received = txs.filter(tx => ['income', 'debt_collection'].includes(tx.kind)).reduce((sum, tx) => sum + tx.amount, 0);
+    const expenses = txs.filter(tx => tx.kind === 'expense').reduce((sum, tx) => sum + tx.amount, 0);
+    return { received, expenses, net: received - expenses, due: Math.max(0, Number(project.amount || 0) - received) };
+  }
+  function renderProjects() {
+    const projects = [...state.projects].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    const total = projects.reduce((sum, project) => sum + (project.status === 'in_progress' ? 1 : 0), 0);
+    const done = projects.filter(project => project.status === 'completed').length;
+    const pending = Object.keys(CURRENCIES).map(currency => {
+      const amount = projects.filter(project => project.currency === currency).reduce((sum, project) => sum + projectTotals(project).due, 0);
+      return amount ? `${nfmt(amount)} ${CURRENCIES[currency]}` : '';
+    }).filter(Boolean).join(' · ') || 'لا توجد مستحقات';
+    const cards = projects.map(project => {
+      const totals = projectTotals(project);
+      const client = clientById(project.clientId);
+      const progress = Number(project.amount) > 0 ? Math.min(100, Math.round(totals.received / project.amount * 100)) : 0;
+      return `<article class="card project-card"><div class="project-card-top"><span class="project-mark">${icon('briefcase')}</span><span class="project-status ${project.status}">${PROJECT_STATUS[project.status] || 'قيد التنفيذ'}</span><button class="table-action" aria-label="إجراءات المشروع" data-action="edit-project" data-id="${project.id}">⋯</button></div><h2>${escapeHTML(project.name)}</h2><p class="project-client">${client ? `العميل: ${escapeHTML(client.name)}` : 'مشروع بدون عميل مرتبط'}${project.dueDate ? ` · موعد التسليم ${prettyDate(project.dueDate)}` : ''}</p><div class="project-progress-label"><span>التحصيل</span><strong>${progress}%</strong></div><div class="project-progress"><span style="width:${progress}%"></span></div><div class="project-metrics"><div><small>قيمة المشروع</small><strong>${nfmt(project.amount)} ${CURRENCIES[project.currency]}</strong></div><div><small>المحصّل</small><strong>${nfmt(totals.received)} ${CURRENCIES[project.currency]}</strong></div><div><small>المتبقي</small><strong>${nfmt(totals.due)} ${CURRENCIES[project.currency]}</strong></div></div><div class="project-card-foot"><span>مصروفات ${nfmt(totals.expenses)} ${CURRENCIES[project.currency]}</span><button data-action="new-transaction-for-project" data-id="${project.id}">تسجيل عملية ${icon('arrow')}</button></div></article>`;
+    }).join('') || `<div class="card empty-state project-empty"><span class="empty-icon">${icon('briefcase')}</span><strong>ابدأ بإضافة أول مشروع</strong><p>اربط الدخل والمصروفات بالمشروع لتعرف ما تم تحصيله وما تبقى.</p><button class="button button-primary button-sm" data-action="new-project">إضافة مشروع</button></div>`;
+    return `${pageHead('المشاريع', 'تابع قيمة كل مشروع ودفعاته ومصروفاته من البداية حتى التسليم.', `<button class="button button-primary" data-action="new-project">${icon('plus')} مشروع جديد</button>`)}<div class="project-summary"><article class="card"><span>مشاريع قيد التنفيذ</span><strong>${total}</strong></article><article class="card"><span>مشاريع مكتملة</span><strong>${done}</strong></article><article class="card"><span>مبالغ متبقية للتحصيل</span><strong class="multi-currency-value">${pending}</strong></article></div><div class="project-grid">${cards}</div>`;
+  }
+  function renderClients() {
+    const clients = [...state.clients].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    const cards = clients.map(client => {
+      const projects = state.projects.filter(project => project.clientId === client.id);
+      const activity = Object.keys(CURRENCIES).map(currency => {
+        const agreed = projects.filter(project => project.currency === currency).reduce((sum, project) => sum + Number(project.amount || 0), 0);
+        const received = state.transactions.filter(tx => tx.clientId === client.id && tx.currency === currency && ['income', 'debt_collection'].includes(tx.kind)).reduce((sum, tx) => sum + tx.amount, 0);
+        return agreed || received ? `<span class="client-currency">${currency} <b>${nfmt(received)} / ${nfmt(agreed || received)}</b></span>` : '';
+      }).filter(Boolean).join('') || '<span class="client-currency muted">لا توجد حركات مالية مرتبطة</span>';
+      return `<article class="card client-card"><div class="client-card-top"><span class="client-avatar">${escapeHTML(client.name.slice(0, 1))}</span><button class="table-action" aria-label="إجراءات العميل" data-action="edit-client" data-id="${client.id}">⋯</button></div><h2>${escapeHTML(client.name)}</h2><div class="client-contact">${client.phone ? `<span>${icon('phone')} ${escapeHTML(client.phone)}</span>` : ''}${client.email ? `<span>${icon('mail')} ${escapeHTML(client.email)}</span>` : ''}${!client.phone && !client.email ? '<span>أضف رقم الهاتف أو البريد للتواصل بسهولة.</span>' : ''}</div><div class="client-card-foot"><span>${projects.length} ${projects.length === 1 ? 'مشروع' : 'مشاريع'}</span><button data-action="client-project" data-id="${client.id}">مشروع جديد ${icon('arrow')}</button></div><div class="client-money">${activity}</div></article>`;
+    }).join('') || `<div class="card empty-state client-empty"><span class="empty-icon">${icon('user')}</span><strong>سجّل عملاءك في مكان واحد</strong><p>اربط العميل بمشاريعه ودفعاته لتعرف قيمة التعامل معه.</p><button class="button button-primary button-sm" data-action="new-client">إضافة عميل</button></div>`;
+    return `${pageHead('العملاء', 'احفظ بيانات عملائك واربط كل عميل بمشاريعه وحركاته المالية.', `<button class="button button-primary" data-action="new-client">${icon('plus')} عميل جديد</button>`)}<div class="client-grid">${cards}</div>`;
   }
 
   function debtRows(direction) {
@@ -308,14 +407,26 @@
 
   function renderPage() {
     const content = $('#pageContent');
+    if (!state.setupComplete) {
+      content.innerHTML = renderOnboarding();
+      $$('.nav-item, .mobile-nav-item').forEach(item => item.classList.remove('active'));
+      $('#transactionCount').textContent = String(state.transactions.length);
+      return;
+    }
+    $('#appShell').classList.remove('onboarding-mode');
     $('#pageTitle').textContent = PAGE_NAMES[activePage];
-    content.innerHTML = ({ dashboard: renderDashboard, transactions: renderTransactions, accounts: renderAccounts, debts: renderDebts, reports: renderReports })[activePage]();
+    content.innerHTML = ({ dashboard: renderDashboard, transactions: renderTransactions, accounts: renderAccounts, projects: renderProjects, clients: renderClients, debts: renderDebts, reports: renderReports })[activePage]();
     $$('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.page === activePage));
+    $$('.mobile-nav-item').forEach(item => item.classList.toggle('active', item.dataset.page === activePage || (item.dataset.action === 'open-more-nav' && ['clients', 'debts', 'reports'].includes(activePage))));
     $('#transactionCount').textContent = String(state.transactions.length);
     $('#demoPill').hidden = !state.demo;
+    const name = state.profile?.name || 'ملفي المالي';
+    $('#profileName').textContent = name;
+    $('#profileAvatar').textContent = name.slice(0, 1);
   }
   function navigate(page) {
     if (!PAGE_NAMES[page]) return;
+    $('#mobileMenuRoot').innerHTML = '';
     activePage = page;
     renderPage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -334,17 +445,29 @@
     if (first) setTimeout(() => first.focus(), 30);
   }
   function closeModal() { $('#modalRoot').innerHTML = ''; }
+  function openMobileMenu() {
+    $('#mobileMenuRoot').innerHTML = `<div class="mobile-menu-backdrop" data-action="close-mobile-menu"><section class="mobile-more-panel" aria-label="المزيد من الصفحات"><div class="mobile-more-handle"></div><h2>المزيد</h2><p>إدارة بقية مساحتك المالية</p><button data-page="clients"><span>${icon('user')}</span><b>العملاء</b>${icon('arrow')}</button><button data-page="debts"><span>${icon('people')}</span><b>الديون والالتزامات</b>${icon('arrow')}</button><button data-page="reports"><span>${icon('chart')}</span><b>التقارير والكشوف</b>${icon('arrow')}</button><button data-action="profile"><span>${icon('user')}</span><b>الملف الشخصي</b>${icon('arrow')}</button></section></div>`;
+    $('.mobile-menu-backdrop').addEventListener('click', event => { if (event.target.classList.contains('mobile-menu-backdrop')) $('#mobileMenuRoot').innerHTML = ''; });
+  }
   function matchingAccounts(currency) { return currencyAccounts(currency); }
   function accountSelect(name, accounts, selected = '') {
     return `<select name="${name}" required><option value="">اختر الحساب</option>${accounts.map(account => `<option value="${account.id}" ${account.id === selected ? 'selected' : ''}>${escapeHTML(account.name)} — ${account.currency}</option>`).join('')}</select>`;
   }
+  function clientOptions(selected = '') {
+    return `<option value="">بدون عميل مرتبط</option>${state.clients.map(client => `<option value="${client.id}" ${client.id === selected ? 'selected' : ''}>${escapeHTML(client.name)}</option>`).join('')}`;
+  }
+  function projectOptions(selected = '') {
+    return `<option value="">بدون مشروع مرتبط</option>${state.projects.map(project => `<option value="${project.id}" ${project.id === selected ? 'selected' : ''}>${escapeHTML(project.name)} · ${project.currency}</option>`).join('')}`;
+  }
 
-  function transactionModal() {
+  function transactionModal(projectId = '') {
     const accountGroups = Object.entries(CURRENCIES).map(([code]) => currencyAccounts(code)).flat();
     const typeRadios = `<div class="radio-row"><label class="radio-option"><input type="radio" name="kind" value="income" checked><span>${icon('up')} دخل</span></label><label class="radio-option expense"><input type="radio" name="kind" value="expense"><span>${icon('down')} مصروف</span></label><label class="radio-option"><input type="radio" name="kind" value="transfer"><span>↔ تحويل</span></label></div>`;
-    const body = `<form class="modal-form" id="transactionForm"><div class="form-grid"><div class="form-field full"><label>نوع العملية</label>${typeRadios}</div><div class="form-field full"><label for="txTitle">وصف العملية <span class="required">*</span></label><input id="txTitle" name="title" required maxlength="90" placeholder="مثال: دفعة تصميم شعار"/></div><div class="form-field" id="accountField"><label>الحساب <span class="required">*</span></label>${accountSelect('accountId', accountGroups)}</div><div class="form-field" id="transferToField" hidden><label>إلى الحساب <span class="required">*</span></label>${accountSelect('toAccountId', accountGroups)}</div><div class="form-field"><label for="txAmount">المبلغ <span class="required">*</span></label><input id="txAmount" name="amount" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="0.00"/><span class="helper" id="txCurrencyHint">اختر الحساب أولًا لمعرفة العملة.</span></div><div class="form-field"><label for="txDate">التاريخ</label><input id="txDate" name="date" type="date" value="${toISO(Date.now())}" required/></div><div class="form-field"><label for="txCategory">التصنيف</label><select id="txCategory" name="category"><option>عمل حر</option><option>تشغيل</option><option>اشتراكات</option><option>فواتير</option><option>شخصي</option><option>تنقل</option><option>ضيافة</option><option>أخرى</option></select></div><div class="form-field"><label for="txParty">الجهة (اختياري)</label><input id="txParty" name="party" maxlength="70" placeholder="عميل، مزود خدمة..."/></div><div class="form-field full"><label for="txNote">ملاحظة (اختياري)</label><textarea id="txNote" name="note" maxlength="220" placeholder="تفاصيل إضافية تساعدك عند مراجعة العملية"></textarea></div></div><p class="modal-note" style="margin:13px 0 0">التحويل متاح بين حسابين بعملة واحدة. حدّد المبلغ والعملة الفعلية في الحساب.</p><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ العملية</button></div></form>`;
+    const body = `<form class="modal-form" id="transactionForm"><div class="form-grid"><div class="form-field full"><label>نوع العملية</label>${typeRadios}</div><div class="form-field full"><label for="txTitle">وصف العملية <span class="required">*</span></label><input id="txTitle" name="title" required maxlength="90" placeholder="مثال: دفعة تصميم شعار"/></div><div class="form-field" id="accountField"><label>الحساب <span class="required">*</span></label>${accountSelect('accountId', accountGroups)}</div><div class="form-field" id="transferToField" hidden><label>إلى الحساب <span class="required">*</span></label>${accountSelect('toAccountId', accountGroups)}</div><div class="form-field"><label for="txAmount">المبلغ <span class="required">*</span></label><input id="txAmount" name="amount" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="0.00"/><span class="helper" id="txCurrencyHint">اختر الحساب أولًا لمعرفة العملة.</span></div><div class="form-field"><label for="txDate">التاريخ</label><input id="txDate" name="date" type="date" value="${toISO(Date.now())}" required/></div><div class="form-field"><label for="txCategory">التصنيف</label><select id="txCategory" name="category"><option>عمل حر</option><option>تشغيل</option><option>اشتراكات</option><option>فواتير</option><option>شخصي</option><option>تنقل</option><option>ضيافة</option><option>أخرى</option></select></div><div class="form-field"><label for="txClient">العميل (اختياري)</label><select id="txClient" name="clientId">${clientOptions()}</select></div><div class="form-field"><label for="txProject">المشروع (اختياري)</label><select id="txProject" name="projectId">${projectOptions(projectId)}</select></div><div class="form-field"><label for="txParty">جهة أخرى (اختياري)</label><input id="txParty" name="party" maxlength="70" placeholder="مزود خدمة أو وصف إضافي"/></div><div class="form-field full"><label for="txNote">ملاحظة (اختياري)</label><textarea id="txNote" name="note" maxlength="220" placeholder="تفاصيل إضافية تساعدك عند مراجعة العملية"></textarea></div></div><p class="modal-note" style="margin:13px 0 0">التحويل متاح بين حسابين بعملة واحدة. أربط العملية بعميل أو مشروع لتظهر في تقاريره.</p><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ العملية</button></div></form>`;
     showModal('إضافة عملية', 'سجّل دخلًا أو مصروفًا أو تحويلًا بين حساباتك.', body);
     const form = $('#transactionForm');
+    const presetProject = projectById(projectId);
+    if (presetProject?.clientId) $('select[name=clientId]', form).value = presetProject.clientId;
     function setKind() {
       const kind = new FormData(form).get('kind');
       const transfer = kind === 'transfer';
@@ -360,10 +483,13 @@
       const to = accountById($('select[name=toAccountId]', form).value);
       $('#txCurrencyHint').textContent = account ? `سيُسجل المبلغ بعملة ${CURRENCY_NAMES[account.currency]}.` : 'اختر الحساب أولًا لمعرفة العملة.';
       if (kind === 'transfer' && account && to && account.currency !== to.currency) $('#txCurrencyHint').textContent = 'اختر حسابًا بعملة مطابقة للحساب الأول لإتمام التحويل.';
+      const project = projectById($('select[name=projectId]', form).value);
+      if (project && account && project.currency !== account.currency) $('#txCurrencyHint').textContent = `اختر حسابًا بعملة ${project.currency} لربط هذه العملية بالمشروع.`;
     }
     form.addEventListener('change', event => {
       if (event.target.name === 'kind') setKind();
       if (event.target.name === 'accountId' || event.target.name === 'toAccountId') updateTxCurrencyHint();
+      if (event.target.name === 'projectId') { const project = projectById(event.target.value); if (project?.clientId) $('select[name=clientId]', form).value = project.clientId; updateTxCurrencyHint(); }
     });
     setKind();
   }
@@ -371,7 +497,7 @@
   function editTransactionModal(tx) {
     if (tx.debtId) return toast('عدّل هذه الحركة من سجل الدين المرتبط بها حتى تبقى الأرصدة متطابقة.', 'error');
     const accounts = state.accounts;
-    const body = `<form class="modal-form" id="transactionEditForm"><input type="hidden" name="id" value="${tx.id}"/><div class="form-grid"><div class="form-field full"><label>وصف العملية <span class="required">*</span></label><input name="title" required maxlength="90" value="${escapeHTML(tx.title)}"/></div><div class="form-field"><label>نوع العملية</label><select name="kind"><option value="income" ${tx.kind === 'income' ? 'selected' : ''}>دخل</option><option value="expense" ${tx.kind === 'expense' ? 'selected' : ''}>مصروف</option><option value="transfer" ${tx.kind === 'transfer' ? 'selected' : ''}>تحويل بين حسابين</option></select></div><div class="form-field"><label>المبلغ <span class="required">*</span></label><input name="amount" type="number" min="0.01" step="any" value="${tx.amount}" required/></div><div class="form-field" id="editFromField"><label id="editFromLabel">${tx.kind === 'transfer' ? 'من الحساب' : 'الحساب'}</label>${accountSelect('accountId', accounts, tx.kind === 'transfer' ? tx.fromAccountId : tx.accountId)}</div><div class="form-field" id="editToField" ${tx.kind === 'transfer' ? '' : 'hidden'}><label>إلى الحساب</label>${accountSelect('toAccountId', accounts, tx.toAccountId || '')}</div><div class="form-field"><label>التاريخ</label><input name="date" type="date" value="${tx.date}" required/></div><div class="form-field"><label>التصنيف</label><select name="category">${['عمل حر', 'تشغيل', 'اشتراكات', 'فواتير', 'شخصي', 'تنقل', 'ضيافة', 'أخرى'].map(category => `<option ${tx.category === category ? 'selected' : ''}>${category}</option>`).join('')}</select></div><div class="form-field"><label>الجهة (اختياري)</label><input name="party" maxlength="70" value="${escapeHTML(tx.party || '')}"/></div><div class="form-field full"><label>ملاحظة</label><textarea name="note" maxlength="220">${escapeHTML(tx.note || '')}</textarea></div></div><div class="modal-actions"><button type="button" class="button button-danger button-sm" data-action="delete-transaction-modal" data-id="${tx.id}">حذف العملية</button><span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ التغييرات</button></div></form>`;
+    const body = `<form class="modal-form" id="transactionEditForm"><input type="hidden" name="id" value="${tx.id}"/><div class="form-grid"><div class="form-field full"><label>وصف العملية <span class="required">*</span></label><input name="title" required maxlength="90" value="${escapeHTML(tx.title)}"/></div><div class="form-field"><label>نوع العملية</label><select name="kind"><option value="income" ${tx.kind === 'income' ? 'selected' : ''}>دخل</option><option value="expense" ${tx.kind === 'expense' ? 'selected' : ''}>مصروف</option><option value="transfer" ${tx.kind === 'transfer' ? 'selected' : ''}>تحويل بين حسابين</option></select></div><div class="form-field"><label>المبلغ <span class="required">*</span></label><input name="amount" type="number" min="0.01" step="any" value="${tx.amount}" required/></div><div class="form-field" id="editFromField"><label id="editFromLabel">${tx.kind === 'transfer' ? 'من الحساب' : 'الحساب'}</label>${accountSelect('accountId', accounts, tx.kind === 'transfer' ? tx.fromAccountId : tx.accountId)}</div><div class="form-field" id="editToField" ${tx.kind === 'transfer' ? '' : 'hidden'}><label>إلى الحساب</label>${accountSelect('toAccountId', accounts, tx.toAccountId || '')}</div><div class="form-field"><label>التاريخ</label><input name="date" type="date" value="${tx.date}" required/></div><div class="form-field"><label>التصنيف</label><select name="category">${['عمل حر', 'تشغيل', 'اشتراكات', 'فواتير', 'شخصي', 'تنقل', 'ضيافة', 'أخرى'].map(category => `<option ${tx.category === category ? 'selected' : ''}>${category}</option>`).join('')}</select></div><div class="form-field"><label>العميل (اختياري)</label><select name="clientId">${clientOptions(tx.clientId || '')}</select></div><div class="form-field"><label>المشروع (اختياري)</label><select name="projectId">${projectOptions(tx.projectId || '')}</select></div><div class="form-field"><label>جهة أخرى</label><input name="party" maxlength="70" value="${escapeHTML(tx.party || '')}"/></div><div class="form-field full"><label>ملاحظة</label><textarea name="note" maxlength="220">${escapeHTML(tx.note || '')}</textarea></div></div><div class="modal-actions"><button type="button" class="button button-danger button-sm" data-action="delete-transaction-modal" data-id="${tx.id}">حذف العملية</button><span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ التغييرات</button></div></form>`;
     showModal('تعديل العملية', 'حدّث التفاصيل، وسيُعاد احتساب الأرصدة تلقائيًا.', body);
     $('select[name=toAccountId]', $('#transactionEditForm')).required = tx.kind === 'transfer';
     $('#transactionEditForm').addEventListener('change', event => {
@@ -391,6 +517,21 @@
   function editAccountModal(account) {
     const body = `<form class="modal-form" id="accountEditForm"><input type="hidden" name="id" value="${account.id}"/><div class="form-grid"><div class="form-field full"><label>اسم الحساب <span class="required">*</span></label><input name="name" required maxlength="55" value="${escapeHTML(account.name)}"/></div><div class="form-field"><label>نوع الحساب</label><select name="kind"><option value="bank" ${account.kind === 'bank' ? 'selected' : ''}>حساب بنكي</option><option value="wallet" ${account.kind === 'wallet' ? 'selected' : ''}>محفظة إلكترونية</option><option value="cash" ${account.kind === 'cash' ? 'selected' : ''}>نقدي</option></select></div><div class="form-field"><label>العملة</label><input value="${CURRENCY_NAMES[account.currency]} (${account.currency})" disabled/></div><div class="form-field full"><label>رصيد البداية</label><input name="openingBalance" type="number" step="any" value="${account.openingBalance}"/><span class="helper">تغيير رصيد البداية يعيد احتساب الرصيد الحالي مع كل العمليات.</span></div></div><div class="modal-actions"><button type="button" class="button button-danger button-sm" data-action="delete-account" data-id="${account.id}">حذف الحساب</button><span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ التغييرات</button></div></form>`;
     showModal('تعديل الحساب', 'حدّث الاسم أو نوع الحساب أو رصيد البداية.', body);
+  }
+
+  function projectModal(project = null, clientId = '') {
+    const data = project || { name: '', clientId, amount: '', currency: state.currency, status: 'in_progress', dueDate: '', notes: '' };
+    const body = `<form class="modal-form" id="projectForm"><input type="hidden" name="id" value="${project?.id || ''}"/><div class="form-grid"><div class="form-field full"><label>اسم المشروع <span class="required">*</span></label><input name="name" required maxlength="80" value="${escapeHTML(data.name)}" placeholder="مثال: تصميم هوية بصرية"/></div><div class="form-field"><label>العميل</label><select name="clientId">${clientOptions(data.clientId || '')}</select><span class="helper">يمكنك إدارة العملاء من صفحة العملاء.</span></div><div class="form-field"><label>الحالة</label><select name="status">${Object.entries(PROJECT_STATUS).map(([key, value]) => `<option value="${key}" ${data.status === key ? 'selected' : ''}>${value}</option>`).join('')}</select></div><div class="form-field"><label>قيمة الاتفاق</label><input name="amount" type="number" min="0" step="any" value="${data.amount}" placeholder="0"/></div><div class="form-field"><label>العملة</label><select name="currency">${currencyOptions(data.currency || state.currency)}</select></div><div class="form-field full"><label>موعد التسليم (اختياري)</label><input name="dueDate" type="date" value="${data.dueDate || ''}"/></div><div class="form-field full"><label>ملاحظات</label><textarea name="notes" maxlength="220">${escapeHTML(data.notes || '')}</textarea></div></div><div class="modal-actions">${project ? `<button type="button" class="button button-danger button-sm" data-action="delete-project" data-id="${project.id}">حذف المشروع</button>` : ''}<span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">${project ? 'حفظ التعديلات' : 'حفظ المشروع'}</button></div></form>`;
+    showModal(project ? 'تعديل المشروع' : 'مشروع جديد', 'اربط الدفعات والمصروفات بالمشروع لعرض أدائه المالي.', body);
+  }
+  function clientModal(client = null) {
+    const data = client || { name: '', phone: '', email: '', notes: '' };
+    const body = `<form class="modal-form" id="clientForm"><input type="hidden" name="id" value="${client?.id || ''}"/><div class="form-grid"><div class="form-field full"><label>اسم العميل أو الجهة <span class="required">*</span></label><input name="name" required maxlength="80" value="${escapeHTML(data.name)}" placeholder="الاسم أو اسم الشركة"/></div><div class="form-field"><label>رقم الهاتف</label><input name="phone" type="tel" maxlength="35" value="${escapeHTML(data.phone || '')}" placeholder="+967 أو +966"/></div><div class="form-field"><label>البريد الإلكتروني</label><input name="email" type="email" maxlength="90" value="${escapeHTML(data.email || '')}" placeholder="name@example.com"/></div><div class="form-field full"><label>ملاحظات</label><textarea name="notes" maxlength="220">${escapeHTML(data.notes || '')}</textarea></div></div><div class="modal-actions">${client ? `<button type="button" class="button button-danger button-sm" data-action="delete-client" data-id="${client.id}">حذف العميل</button>` : ''}<span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">${client ? 'حفظ التعديلات' : 'حفظ العميل'}</button></div></form>`;
+    showModal(client ? 'تعديل بيانات العميل' : 'إضافة عميل', 'بيانات العميل تساعدك على ربط المشاريع والدفعات بشكل منظم.', body);
+  }
+  function profileModal() {
+    const body = `<form class="modal-form" id="profileForm"><div class="form-grid"><div class="form-field full"><label>اسمك أو اسم نشاطك</label><input name="name" required maxlength="60" value="${escapeHTML(state.profile?.name || '')}"/></div><div class="form-field"><label>عملة العرض الافتراضية</label><select name="currency">${currencyOptions(state.profile?.currency || state.currency)}</select></div></div><p class="modal-note">الملف الشخصي محفوظ محليًا على هذا الجهاز ولا يمثل تسجيل دخول سحابيًا.</p><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ الملف</button></div></form>`;
+    showModal('ملفي المالي', 'حدّث بيانات المساحة التي تظهر في التطبيق.', body);
   }
 
   function debtModal(direction = 'receivable') {
@@ -418,8 +559,8 @@
     toast('تم تنزيل الكشف بصيغة CSV.');
   }
   function exportTransactions(list = state.transactions, filename = 'raseed-transactions.csv') {
-    const rows = [['التاريخ', 'النوع', 'الوصف', 'التصنيف', 'الجهة', 'الحساب', 'المبلغ', 'العملة', 'ملاحظة']];
-    [...list].sort((a, b) => a.date.localeCompare(b.date)).forEach(tx => rows.push([tx.date, TYPE_NAMES[tx.kind], tx.title, tx.category, tx.party, transactionAccountText(tx), tx.amount, tx.currency, tx.note]));
+    const rows = [['التاريخ', 'النوع', 'الوصف', 'التصنيف', 'الجهة', 'الحساب', 'المشروع', 'العميل', 'المبلغ', 'العملة', 'ملاحظة']];
+    [...list].sort((a, b) => a.date.localeCompare(b.date)).forEach(tx => rows.push([tx.date, TYPE_NAMES[tx.kind], tx.title, tx.category, transactionParty(tx), transactionAccountText(tx), projectById(tx.projectId)?.name || '', clientById(tx.clientId)?.name || '', tx.amount, tx.currency, tx.note]));
     downloadCSV(rows, filename);
   }
   function exportMonth() {
@@ -435,7 +576,11 @@
     const toAccount = kind === 'transfer' ? accountById(formData.get('toAccountId')) : null;
     if (!amount || amount <= 0 || !account) return toast('تحقق من المبلغ والحساب.', 'error');
     if (kind === 'transfer' && (!toAccount || toAccount.id === account.id || toAccount.currency !== account.currency)) return toast('اختر حساب وجهة مختلفًا وبالعملة نفسها.', 'error');
-    const tx = { id: uid('t'), date: formData.get('date') || toISO(Date.now()), kind, amount, currency: account.currency, accountId: account.id, fromAccountId: kind === 'transfer' ? account.id : '', toAccountId: kind === 'transfer' ? toAccount.id : '', title: String(formData.get('title') || '').trim(), category: String(formData.get('category') || 'أخرى'), party: String(formData.get('party') || '').trim(), note: String(formData.get('note') || '').trim(), createdAt: new Date().toISOString() };
+    const projectId = String(formData.get('projectId') || '');
+    const project = projectById(projectId);
+    if (project && project.currency !== account.currency) return toast('عملة المشروع لا تطابق عملة الحساب المختار.', 'error');
+    const clientId = String(formData.get('clientId') || project?.clientId || '');
+    const tx = { id: uid('t'), date: formData.get('date') || toISO(Date.now()), kind, amount, currency: account.currency, accountId: account.id, fromAccountId: kind === 'transfer' ? account.id : '', toAccountId: kind === 'transfer' ? toAccount.id : '', title: String(formData.get('title') || '').trim(), category: String(formData.get('category') || 'أخرى'), clientId, projectId, party: String(formData.get('party') || '').trim() || clientById(clientId)?.name || '', note: String(formData.get('note') || '').trim(), createdAt: new Date().toISOString() };
     state.transactions.push(tx);
     saveState(); closeModal(); renderPage(); toast('تم حفظ العملية وتحديث رصيد الحساب.');
   }
@@ -447,13 +592,82 @@
     const toAccount = kind === 'transfer' ? accountById(formData.get('toAccountId')) : null;
     if (!tx || !account || amount <= 0) return toast('تحقق من المبلغ والحساب.', 'error');
     if (kind === 'transfer' && (!toAccount || toAccount.id === account.id || toAccount.currency !== account.currency)) return toast('اختر حساب وجهة مختلفًا وبالعملة نفسها.', 'error');
-    Object.assign(tx, { kind, amount, currency: account.currency, accountId: account.id, fromAccountId: kind === 'transfer' ? account.id : '', toAccountId: kind === 'transfer' ? toAccount.id : '', title: String(formData.get('title') || '').trim(), date: formData.get('date'), category: String(formData.get('category') || 'أخرى'), party: String(formData.get('party') || '').trim(), note: String(formData.get('note') || '').trim() });
+    const projectId = String(formData.get('projectId') || '');
+    const project = projectById(projectId);
+    if (project && project.currency !== account.currency) return toast('عملة المشروع لا تطابق عملة الحساب المختار.', 'error');
+    const clientId = String(formData.get('clientId') || project?.clientId || '');
+    Object.assign(tx, { kind, amount, currency: account.currency, accountId: account.id, fromAccountId: kind === 'transfer' ? account.id : '', toAccountId: kind === 'transfer' ? toAccount.id : '', title: String(formData.get('title') || '').trim(), date: formData.get('date'), category: String(formData.get('category') || 'أخرى'), clientId, projectId, party: String(formData.get('party') || '').trim() || clientById(clientId)?.name || '', note: String(formData.get('note') || '').trim() });
     saveState(); closeModal(); renderPage(); toast('تم تحديث العملية وإعادة احتساب الأرصدة.');
   }
   function addAccount(formData) {
-    const account = { id: uid('a'), name: String(formData.get('name') || '').trim(), kind: formData.get('kind'), provider: formData.get('provider'), currency: formData.get('currency'), openingBalance: safeNumber(formData.get('openingBalance')) };
+    const kind = formData.get('kind');
+    const account = { id: uid('a'), name: String(formData.get('name') || '').trim(), kind, provider: normalizedProvider(kind, formData.get('provider')), currency: formData.get('currency'), openingBalance: safeNumber(formData.get('openingBalance')) };
     if (!account.name) return toast('أدخل اسم الحساب.', 'error');
     state.accounts.push(account); saveState(); closeModal(); renderPage(); toast('تمت إضافة الحساب.');
+  }
+  function saveProject(formData) {
+    const id = String(formData.get('id') || '');
+    const name = String(formData.get('name') || '').trim();
+    const amount = safeNumber(formData.get('amount'));
+    if (!name || amount < 0) return toast('تحقق من اسم المشروع وقيمته.', 'error');
+    const values = { name, clientId: String(formData.get('clientId') || ''), amount, currency: formData.get('currency'), status: formData.get('status'), dueDate: formData.get('dueDate') || '', notes: String(formData.get('notes') || '').trim(), updatedAt: new Date().toISOString() };
+    if (id) Object.assign(projectById(id), values);
+    else state.projects.push({ id: uid('p'), ...values });
+    saveState(); closeModal(); renderPage(); toast(id ? 'تم تحديث المشروع.' : 'تمت إضافة المشروع.');
+  }
+  function deleteProject(id) {
+    const project = projectById(id);
+    if (!project || !window.confirm(`حذف المشروع «${project.name}»؟ ستبقى العمليات محفوظة دون ربط بالمشروع.`)) return;
+    state.transactions.forEach(tx => { if (tx.projectId === id) tx.projectId = ''; });
+    state.projects = state.projects.filter(item => item.id !== id);
+    saveState(); closeModal(); renderPage(); toast('تم حذف المشروع مع الاحتفاظ بسجل العمليات.');
+  }
+  function saveClient(formData) {
+    const id = String(formData.get('id') || '');
+    const name = String(formData.get('name') || '').trim();
+    if (!name) return toast('أدخل اسم العميل.', 'error');
+    const values = { name, phone: String(formData.get('phone') || '').trim(), email: String(formData.get('email') || '').trim(), notes: String(formData.get('notes') || '').trim() };
+    if (id) Object.assign(clientById(id), values);
+    else state.clients.push({ id: uid('c'), ...values });
+    saveState(); closeModal(); renderPage(); toast(id ? 'تم تحديث العميل.' : 'تمت إضافة العميل.');
+  }
+  function deleteClient(id) {
+    const client = clientById(id);
+    if (!client || !window.confirm(`حذف العميل «${client.name}»؟ ستبقى المشاريع والعمليات محفوظة دون ربط به.`)) return;
+    state.projects.forEach(project => { if (project.clientId === id) project.clientId = ''; });
+    state.transactions.forEach(tx => { if (tx.clientId === id) { tx.clientId = ''; tx.party ||= client.name; } });
+    state.clients = state.clients.filter(item => item.id !== id);
+    saveState(); closeModal(); renderPage(); toast('تم حذف العميل مع الاحتفاظ بالسجلات.');
+  }
+  function saveOnboardingAccount(formData) {
+    const name = String(formData.get('name') || '').trim();
+    if (!name) return toast('أدخل اسم الحساب.', 'error');
+    const kind = formData.get('kind');
+    onboardingAccounts.push({ id: uid('a'), name, kind, provider: normalizedProvider(kind, formData.get('provider')), currency: formData.get('currency'), openingBalance: safeNumber(formData.get('openingBalance')) });
+    persistSetupDraft();
+    renderPage(); toast('تمت إضافة الحساب إلى الإعداد.');
+  }
+  function saveOnboardingDebt(formData) {
+    const person = String(formData.get('person') || '').trim();
+    const amount = safeNumber(formData.get('amount'));
+    if (!person || amount <= 0) return toast('أدخل الجهة والمبلغ المتبقي.', 'error');
+    onboardingDebts.push({ id: uid('d'), direction: formData.get('direction'), person, original: amount, remaining: amount, currency: formData.get('currency'), dueDate: '', description: String(formData.get('description') || '').trim(), createdAt: toISO(Date.now()) });
+    persistSetupDraft();
+    renderPage(); toast('تمت إضافة سجل الدين إلى الإعداد.');
+  }
+  function finishSetup() {
+    if (!onboardingAccounts.length) return toast('أضف حسابًا واحدًا على الأقل قبل البدء.', 'error');
+    state.accounts = onboardingAccounts;
+    state.debts = [...state.debts, ...onboardingDebts];
+    state.setupDraft = null;
+    state.setupComplete = true;
+    state.demo = false;
+    state.profile = { ...state.profile, currency: state.profile?.currency || state.currency };
+    state.currency = state.profile.currency;
+    saveState();
+    activePage = 'dashboard';
+    onboardingStep = 1; onboardingAccounts = []; onboardingDebts = [];
+    renderPage(); toast('أصبحت مساحتك المالية جاهزة.');
   }
   function updateAccount(formData) {
     const account = accountById(formData.get('id'));
@@ -517,12 +731,22 @@
     if (!target) return;
     if (target.dataset.page) { navigate(target.dataset.page); return; }
     const action = target.dataset.action;
+    if (action === 'open-more-nav') { openMobileMenu(); return; }
+    else if (action === 'close-mobile-menu') { $('#mobileMenuRoot').innerHTML = ''; return; }
     if (action === 'new-transaction') transactionModal();
+    else if (action === 'new-transaction-for-project') transactionModal(target.dataset.id || '');
     else if (action === 'new-account') accountModal();
     else if (action === 'edit-account') { const account = accountById(target.dataset.id); if (account) editAccountModal(account); }
     else if (action === 'delete-account') deleteAccount(target.dataset.id);
     else if (action === 'delete-transaction-modal') deleteTransaction(target.dataset.id);
     else if (action === 'new-debt') debtModal(target.dataset.direction || 'receivable');
+    else if (action === 'new-project') projectModal();
+    else if (action === 'edit-project') { const project = projectById(target.dataset.id); if (project) projectModal(project); }
+    else if (action === 'delete-project') deleteProject(target.dataset.id);
+    else if (action === 'new-client') clientModal();
+    else if (action === 'edit-client') { const client = clientById(target.dataset.id); if (client) clientModal(client); }
+    else if (action === 'delete-client') deleteClient(target.dataset.id);
+    else if (action === 'client-project') projectModal(null, target.dataset.id || '');
     else if (action === 'close-modal' || action === 'backdrop-close') { if (action === 'close-modal' || event.target === target) closeModal(); }
     else if (action === 'set-currency') { state.currency = target.dataset.currency; saveState(); renderPage(); }
     else if (action === 'debt-payment') { const debt = state.debts.find(item => item.id === target.dataset.id); if (debt) paymentModal(debt); }
@@ -537,19 +761,29 @@
       if (window.confirm('سيُحذف كل ما سجلته محليًا ويعاد تحميل البيانات التوضيحية. هل تريد المتابعة؟')) { state = demoState(); saveState(); activePage = 'dashboard'; renderPage(); toast('تمت إعادة بيانات العرض.'); }
     } else if (action === 'clear-demo') {
       if (window.confirm('سيُحذف كل سجل توضيحي، وستبدأ بحسابات وعمليات فارغة. نزّل أي بيانات تريد الاحتفاظ بها أولًا. هل تريد المتابعة؟')) {
-        state = { version: 1, accounts: [], transactions: [], debts: [], currency: 'SAR', dashboardMonth: toISO(Date.now()).slice(0, 7), demo: false };
-        saveState(); activePage = 'accounts'; renderPage(); toast('تم مسح بيانات العرض. أضف حساباتك للبدء.');
+        state = emptyState(); onboardingStep = 1; onboardingAccounts = []; onboardingDebts = [];
+        saveState(); activePage = 'dashboard'; renderPage(); toast('تم مسح بيانات العرض. أكمل إعداد مساحتك.');
       }
     } else if (action === 'search') { navigate('transactions'); const input = $('#transactionSearch'); input?.focus(); input?.select(); }
     else if (action === 'notifications') toast(state.debts.some(d => d.remaining > 0 && d.dueDate && d.dueDate < toISO(Date.now())) ? 'لديك دين أو التزام متأخر. راجع صفحة الديون.' : 'لا توجد تذكيرات مستحقة حاليًا.');
-    else if (action === 'profile') toast('إعدادات الملف الشخصي غير مفعّلة في هذه النسخة.');
+    else if (action === 'profile') { $('#mobileMenuRoot').innerHTML = ''; profileModal(); }
+    else if (action === 'setup-back') { onboardingStep = 1; persistSetupDraft(); renderPage(); }
+    else if (action === 'finish-setup') finishSetup();
+    else if (action === 'remove-setup-account') { onboardingAccounts.splice(Number(target.dataset.index), 1); persistSetupDraft(); renderPage(); }
+    else if (action === 'remove-setup-debt') { onboardingDebts.splice(Number(target.dataset.index), 1); persistSetupDraft(); renderPage(); }
   });
 
   document.addEventListener('submit', event => {
-    if (event.target.id === 'transactionForm') { event.preventDefault(); addTransaction(new FormData(event.target)); }
+    if (event.target.id === 'onboardingProfileForm') { event.preventDefault(); const data = new FormData(event.target); state.profile = { ...state.profile, name: String(data.get('name') || '').trim(), currency: data.get('currency') }; state.currency = state.profile.currency; onboardingStep = 2; persistSetupDraft(); renderPage(); }
+    else if (event.target.id === 'onboardingAccountForm') { event.preventDefault(); saveOnboardingAccount(new FormData(event.target)); }
+    else if (event.target.id === 'onboardingDebtForm') { event.preventDefault(); saveOnboardingDebt(new FormData(event.target)); }
+    else if (event.target.id === 'transactionForm') { event.preventDefault(); addTransaction(new FormData(event.target)); }
     else if (event.target.id === 'transactionEditForm') { event.preventDefault(); updateTransaction(new FormData(event.target)); }
     else if (event.target.id === 'accountForm') { event.preventDefault(); addAccount(new FormData(event.target)); }
     else if (event.target.id === 'accountEditForm') { event.preventDefault(); updateAccount(new FormData(event.target)); }
+    else if (event.target.id === 'projectForm') { event.preventDefault(); saveProject(new FormData(event.target)); }
+    else if (event.target.id === 'clientForm') { event.preventDefault(); saveClient(new FormData(event.target)); }
+    else if (event.target.id === 'profileForm') { event.preventDefault(); const data = new FormData(event.target); state.profile = { ...state.profile, name: String(data.get('name') || '').trim(), currency: data.get('currency') }; state.currency = state.profile.currency; saveState(); closeModal(); renderPage(); toast('تم حفظ الملف الشخصي.'); }
     else if (event.target.id === 'debtForm') { event.preventDefault(); addDebt(new FormData(event.target)); }
     else if (event.target.id === 'debtPaymentForm') { event.preventDefault(); recordDebtPayment(new FormData(event.target)); }
   });
@@ -566,7 +800,6 @@
   });
 
   $$('[data-icon]').forEach(node => { node.innerHTML = icon(node.dataset.icon); });
-  $$('.nav-item').forEach(item => item.addEventListener('click', () => navigate(item.dataset.page)));
   $('#todayText').textContent = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
   renderPage();
   if (typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator) {
