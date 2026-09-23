@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#122338" />
+    <meta name="theme-color" content="#111216" />
     <meta name="description" content="رصيد — مساحة بسيطة وواضحة لإدارة أموالك وحساباتك وديونك كفريلانسر." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -23,12 +23,14 @@
         </a>
         <div class="nav-caption">القائمة</div>
         <nav class="main-nav">
-          <button class="nav-item active" data-page="dashboard"><span class="nav-icon" data-icon="grid"></span><span>لوحة التحكم</span></button>
+          <button class="nav-item active" data-page="dashboard"><span class="nav-icon" data-icon="grid"></span><span>الرئيسية</span></button>
           <button class="nav-item" data-page="transactions"><span class="nav-icon" data-icon="swap"></span><span>العمليات</span><span class="nav-count" id="transactionCount">0</span></button>
           <button class="nav-item" data-page="accounts"><span class="nav-icon" data-icon="wallet"></span><span>حساباتي</span></button>
           <button class="nav-item" data-page="projects"><span class="nav-icon" data-icon="briefcase"></span><span>المشاريع</span></button>
-          <button class="nav-item" data-page="clients"><span class="nav-icon" data-icon="user"></span><span>العملاء</span></button>
-          <button class="nav-item" data-page="debts"><span class="nav-icon" data-icon="people"></span><span>الديون والالتزامات</span><span class="nav-dot"></span></button>
+          <button class="nav-item" data-page="clients"><span class="nav-icon" data-icon="people"></span><span>الجهات والأشخاص</span></button>
+          <button class="nav-item" data-page="debts"><span class="nav-icon" data-icon="people"></span><span>المستحقات والالتزامات</span><span class="nav-dot"></span></button>
+          <button class="nav-item" data-page="schedules"><span class="nav-icon" data-icon="calendar"></span><span>الدخل والمصروف المتكرر</span></button>
+          <button class="nav-item" data-page="categories"><span class="nav-icon" data-icon="tag"></span><span>التصنيفات</span></button>
           <button class="nav-item" data-page="reports"><span class="nav-icon" data-icon="chart"></span><span>التقارير والكشوف</span></button>
         </nav>
         <div class="sidebar-spacer"></div>
@@ -42,7 +44,8 @@
           <div class="topbar-actions">
             <span class="demo-pill" id="demoPill"><i></i> بيانات توضيحية</span>
             <button class="icon-button search-button" aria-label="بحث في العمليات" data-action="search"><span data-icon="search"></span></button>
-            <button class="icon-button" aria-label="الإشعارات" data-action="notifications"><span data-icon="bell"></span><i class="notification-mark"></i></button>
+          <button class="icon-button" aria-label="إظهار أو إخفاء الأرصدة" data-action="toggle-balances"><span data-icon="eye"></span></button>
+          <button class="icon-button" aria-label="الإشعارات" data-action="notifications"><span data-icon="bell"></span><i class="notification-mark"></i></button>
             <span class="topbar-divider"></span>
             <div class="today-label"><span id="todayText"></span><span data-icon="calendar"></span></div>
           </div>
@@ -53,8 +56,8 @@
     <nav class="mobile-bottom-nav" aria-label="التنقل السريع">
       <button class="mobile-nav-item active" data-page="dashboard"><span data-icon="grid"></span><small>الرئيسية</small></button>
       <button class="mobile-nav-item" data-page="transactions"><span data-icon="swap"></span><small>العمليات</small></button>
+      <button class="mobile-nav-item mobile-add-action" aria-label="إضافة عملية" data-action="open-quick-add"><span data-icon="plus"></span></button>
       <button class="mobile-nav-item" data-page="accounts"><span data-icon="wallet"></span><small>الحسابات</small></button>
-      <button class="mobile-nav-item" data-page="projects"><span data-icon="briefcase"></span><small>المشاريع</small></button>
       <button class="mobile-nav-item" data-action="open-more-nav"><span data-icon="dots"></span><small>المزيد</small></button>
     </nav>
     <div id="mobileMenuRoot"></div>

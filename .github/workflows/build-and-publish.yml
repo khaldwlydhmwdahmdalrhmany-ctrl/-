@@ -1,4 +1,4 @@
-name: Build Raseed APK and publish web app
+name: Build Raseed Android APK
 
 on:
   push:
@@ -9,37 +9,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: raseed-pages
+  group: raseed-android-apk
   cancel-in-progress: false
 
 jobs:
-  publish-pages:
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-      - name: Prepare static app
-        run: |
-          rm -rf _site
-          mkdir -p _site/icons
-          cp index.html app.js styles.css manifest.webmanifest sw.js _site/
-          cp icons/*.png _site/icons/
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - name: Deploy GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
-
   build-apk:
     runs-on: ubuntu-latest
     steps:
@@ -53,7 +26,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-35 build-tools;35.0.0'
+          packages: |
+            platforms;android-35
+            build-tools;35.0.0
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
