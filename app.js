@@ -475,8 +475,22 @@
     const body = `<form class="modal-form" id="scheduleForm"><input type="hidden" name="id" value="${schedule?.id || ''}"/><div class="form-grid"><div class="form-field full"><label>اسم البند <span class="required">*</span></label><input name="name" required maxlength="90" value="${escapeHTML(data.name)}" placeholder="راتب شهري، اشتراك برنامج، إيجار..."/></div><div class="form-field"><label>نوع البند</label><select name="kind"><option value="expense" ${data.kind === 'expense' ? 'selected' : ''}>مصروف ثابت</option><option value="income" ${data.kind === 'income' ? 'selected' : ''}>دخل متكرر</option></select></div><div class="form-field"><label>المبلغ المتوقع</label><input name="amount" type="number" min="0.01" step="any" required value="${data.amount}"/></div><div class="form-field"><label>العملة</label><select name="currency">${currencyOptions(data.currency)}</select></div><div class="form-field"><label>تصنيف</label><input name="category" list="scheduleCategories" value="${escapeHTML(data.category || '')}"/><datalist id="scheduleCategories">${categoryList.map(name => `<option value="${escapeHTML(name)}">`).join('')}</datalist></div><div class="form-field"><label>الجهة المرتبطة</label><select name="contactId">${clientOptions(data.contactId || '')}</select></div><div class="form-field"><label>يوم الاستحقاق المتوقع</label><input name="day" type="number" min="1" max="31" value="${data.day || 1}"/></div><div class="form-field" id="scheduleProjectField"><label>المشروع (اختياري)</label><select name="projectId">${projectOptions(data.projectId || '')}</select></div><div class="form-field" id="scheduleSourceField"><label>مصدر الدخل</label><select name="sourceType">${Object.entries(INCOME_SOURCE_NAMES).map(([key, value]) => `<option value="${key}" ${(data.sourceType || 'retainer') === key ? 'selected' : ''}>${value}</option>`).join('')}</select></div><div class="form-field full"><label>ملاحظة</label><textarea name="notes" maxlength="180">${escapeHTML(data.notes || '')}</textarea></div></div><div class="modal-actions">${schedule ? `<button type="button" class="button button-danger button-sm" data-action="delete-schedule" data-id="${schedule.id}">حذف البند</button>` : ''}<span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">${schedule ? 'حفظ التعديلات' : 'إضافة إلى التكرار الشهري'}</button></div></form>`;
     showModal(schedule ? 'تعديل بند متكرر' : 'إضافة دخل أو مصروف متكرر', 'لا يسجل التطبيق حركة أو يغير رصيدًا تلقائيًا؛ اختر تسجيلها بعد القبض أو الدفع.', body);
     const form = $('#scheduleForm');
-    function sync() { const income = $('select[name=kind]', form).value === 'income'; $('#scheduleProjectField').hidden = income; $('#scheduleSourceField').hidden = !income; }
-    form.addEventListener('change', event => { if (event.target.name === 'kind') sync(); });
+    function sync() {
+      const income = $('select[name=kind]', form).value === 'income';
+      $('#scheduleProjectField').hidden = income; $('#scheduleSourceField').hidden = !income;
+      const projectSelect = $('select[name=projectId]', form);
+      const selectedProject = projectSelect.value;
+      const currency = $('select[name=currency]', form).value;
+      projectSelect.innerHTML = projectOptions(selectedProject, currency);
+      if (selectedProject && ![...projectSelect.options].some(option => option.value === selectedProject)) projectSelect.value = '';
+      const project = projectById(projectSelect.value);
+      if (project?.clientId) $('select[name=contactId]', form).value = project.clientId;
+    }
+    form.addEventListener('change', event => {
+      if (['kind', 'currency'].includes(event.target.name)) sync();
+      if (event.target.name === 'projectId') { const project = projectById(event.target.value); if (project?.clientId) $('select[name=contactId]', form).value = project.clientId; }
+      if (event.target.name === 'contactId') { const project = projectById($('select[name=projectId]', form).value); if (project?.clientId && project.clientId !== event.target.value) $('select[name=projectId]', form).value = ''; }
+    });
     sync();
   }
   function saveSchedule(formData) {
@@ -489,7 +503,7 @@
     const projectId = kind === 'expense' ? String(formData.get('projectId') || '') : '';
     const project = projectById(projectId);
     if (project && project.currency !== currency) return toast('عملة المشروع لا تطابق عملة البند.', 'error');
-    const values = { name, kind, amount, currency, category: String(formData.get('category') || (kind === 'income' ? 'راتب وعقد' : 'مصروف آخر')).trim(), contactId: String(formData.get('contactId') || ''), projectId, day: Math.min(31, Math.max(1, Number(formData.get('day') || 1))), sourceType: kind === 'income' ? String(formData.get('sourceType') || 'retainer') : '', notes: String(formData.get('notes') || '').trim(), active: true };
+    const values = { name, kind, amount, currency, category: String(formData.get('category') || (kind === 'income' ? 'راتب وعقد' : 'مصروف آخر')).trim(), contactId: String(project?.clientId || formData.get('contactId') || ''), projectId, day: Math.min(31, Math.max(1, Number(formData.get('day') || 1))), sourceType: kind === 'income' ? String(formData.get('sourceType') || 'retainer') : '', notes: String(formData.get('notes') || '').trim(), active: true };
     ensureCategory(kind, values.category);
     if (id) Object.assign(state.schedules.find(item => item.id === id), values);
     else state.schedules.push({ id: uid('s'), ...values });
@@ -854,6 +868,11 @@
       const selectedProject = projectSelect.value;
       projectSelect.innerHTML = projectOptions(selectedProject, currency);
       if (selectedProject && ![...projectSelect.options].some(option => option.value === selectedProject)) projectSelect.value = '';
+      const project = projectById(projectSelect.value);
+      if (project?.clientId) {
+        $('select[name=contactId]', form).value = project.clientId;
+        $('input[name=person]', form).value = clientById(project.clientId)?.name || '';
+      }
       const incomeSelect = $('select[name=linkedIncomeId]', form);
       const selectedIncome = incomeSelect.value;
       incomeSelect.innerHTML = incomeOptions(selectedIncome, currency);
@@ -861,7 +880,14 @@
     }
     form.addEventListener('change', event => {
       if (event.target.name === 'direction' || event.target.name === 'currency') syncDebtFields();
-      if (event.target.name === 'contactId') { const contact = clientById(event.target.value); if (contact) $('input[name=person]', form).value = contact.name; }
+      if (event.target.name === 'contactId') {
+        const contact = clientById(event.target.value);
+        if (contact) {
+          $('input[name=person]', form).value = contact.name;
+          const project = projectById($('select[name=projectId]', form).value);
+          if (project?.clientId && project.clientId !== contact.id) $('select[name=projectId]', form).value = '';
+        }
+      }
       if (event.target.name === 'projectId') { const project = projectById(event.target.value); if (project?.clientId) $('select[name=contactId]', form).value = project.clientId; const contact = clientById($('select[name=contactId]', form).value); if (contact) $('input[name=person]', form).value = contact.name; }
     });
     syncDebtFields();
@@ -1162,13 +1188,13 @@
   }
   function addDebt(formData) {
     const direction = formData.get('direction');
-    const selectedContact = clientById(formData.get('contactId'));
-    const person = selectedContact?.name || String(formData.get('person') || '').trim();
     const amount = safeNumber(formData.get('amount'));
     const currency = formData.get('currency');
     const debtDate = String(formData.get('debtDate') || toISO(Date.now()));
     const projectId = String(formData.get('projectId') || '');
     const project = projectById(projectId);
+    const selectedContact = (project?.clientId && clientById(project.clientId)) || clientById(formData.get('contactId'));
+    const person = selectedContact?.name || String(formData.get('person') || '').trim();
     const linkedIncomeId = String(formData.get('linkedIncomeId') || '');
     const linkedIncome = state.transactions.find(item => item.id === linkedIncomeId);
     if (!person || amount <= 0) return toast('تحقق من الاسم والمبلغ.', 'error');

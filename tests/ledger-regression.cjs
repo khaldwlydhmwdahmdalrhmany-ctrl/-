@@ -30,7 +30,7 @@ function createApp(savedState = null) {
     getPage: () => activePage,
     setPage: page => { activePage = page; modalReturnPage = page; },
     setReport: (month, currency, account = 'all') => { state.dashboardMonth = month; reportCurrency = currency; reportAccount = account; activePage = 'reports'; },
-    saveClient, saveProject, addTransaction, addDebt, recordDebtPayment,
+    saveClient, saveProject, saveSchedule, recordSchedule, addTransaction, addDebt, recordDebtPayment,
     accountBalance, buildReportPdfHtml
   };
   if (!window.__skipInitialRender) renderPage();
@@ -71,6 +71,9 @@ const project = app.getState().projects.find(item => item.name === 'تصميم �
 assert.ok(project, 'new project is saved');
 assert.equal(project.clientId, agency.id, 'project stays linked to its client');
 assert.equal(app.getPage(), 'projects', 'a project created from home opens the project list');
+app.setPage('projects');
+app.saveProject(data({ name: 'مشروع يمني', clientId: agency.id, amount: '250000', currency: 'YER', status: 'in_progress', dueDate: '', notes: '' }));
+const yerProject = app.getState().projects.find(item => item.name === 'مشروع يمني');
 
 app.setPage('projects');
 app.addTransaction(data({ kind: 'income', amount: '250', accountId: 'sar-main', toAccountId: '', receivedAmount: '', fee: '0', projectId: project.id, clientId: '', linkedIncomeId: '', title: 'دفعة أولى', category: 'دفعات عميل جديدة', sourceType: 'project', date: '2026-09-10', party: '', note: '' }));
@@ -93,12 +96,14 @@ app.addTransaction(data({ kind: 'exchange', amount: '100000', accountId: 'yer-wa
 assert.equal(app.accountBalance('yer-wallet'), 99900, 'exchange subtracts amount and fee from source');
 assert.equal(app.accountBalance('usd-cash'), 120, 'exchange credits received amount in destination currency');
 
-const yerIncome = { id: 'yer-income', kind: 'income', amount: 100000, currency: 'YER', accountId: 'yer-wallet', title: 'دخل يمني', date: '2026-09-09', category: 'عمل ومشاريع', projectId: '', clientId: agency.id, party: agency.name, createdAt: '2026-09-09T10:00:00.000Z' };
+const yerIncome = { id: 'yer-income', kind: 'income', amount: 100000, currency: 'YER', accountId: 'yer-wallet', title: 'دخل يمني', date: '2026-09-09', category: 'عمل ومشاريع', projectId: yerProject.id, clientId: agency.id, party: agency.name, createdAt: '2026-09-09T10:00:00.000Z' };
 app.getState().transactions.push(yerIncome);
-app.addDebt(data({ direction: 'payable', contactId: agency.id, person: 'اسم متجاوز لا يجب اعتماده', amount: '50000', currency: 'YER', debtDate: '2026-09-11', dueDate: '2026-09-20', projectId: '', description: 'أجرة تنفيذ', linkedIncomeId: yerIncome.id, recognizeExpense: 'on' }));
+app.addDebt(data({ direction: 'payable', contactId: '', person: 'اسم متجاوز لا يجب اعتماده', amount: '50000', currency: 'YER', debtDate: '2026-09-11', dueDate: '2026-09-20', projectId: yerProject.id, description: 'أجرة تنفيذ', linkedIncomeId: yerIncome.id, recognizeExpense: 'on' }));
 const payable = app.getState().debts[0];
 const accrued = app.getState().transactions.find(item => item.debtId === payable.id && item.isAccrued);
 assert.equal(payable.person, agency.name, 'selected contact is the authoritative debt party');
+assert.equal(payable.contactId, agency.id, 'project customer is authoritative for a linked debt');
+assert.equal(payable.projectId, yerProject.id, 'debt remains linked to the project');
 assert.equal(payable.createdAt, '2026-09-11', 'debt registration date is stored');
 assert.equal(accrued.date, '2026-09-11', 'unpaid cost uses the debt registration date');
 assert.equal(app.accountBalance('yer-wallet'), 199900, 'an unpaid obligation does not affect a cash balance');
@@ -106,6 +111,15 @@ assert.equal(app.accountBalance('yer-wallet'), 199900, 'an unpaid obligation doe
 app.recordDebtPayment(data({ debtId: payable.id, accountId: 'yer-wallet', amount: '20000', date: '2026-09-18', note: 'دفعة جزئية' }));
 assert.equal(app.getState().debts[0].remaining, 30000, 'partial settlement updates outstanding debt');
 assert.equal(app.accountBalance('yer-wallet'), 179900, 'partial payment reduces the selected account once');
+
+app.saveSchedule(data({ id: '', name: 'اشتراك خدمة المشروع', kind: 'expense', amount: '15000', currency: 'YER', category: 'خدمات', contactId: '', projectId: yerProject.id, day: '22', sourceType: '', notes: '' }));
+const schedule = app.getState().schedules[0];
+assert.equal(schedule.contactId, agency.id, 'recurring item inherits its project customer');
+app.recordSchedule(data({ id: schedule.id, accountId: 'yer-wallet', amount: '15000', date: '2026-09-22', note: '' }));
+assert.equal(app.accountBalance('yer-wallet'), 164900, 'recorded recurring expense affects the balance once');
+const ledgerCountAfterSchedule = app.getState().transactions.length;
+app.recordSchedule(data({ id: schedule.id, accountId: 'yer-wallet', amount: '15000', date: '2026-09-23', note: '' }));
+assert.equal(app.getState().transactions.length, ledgerCountAfterSchedule, 'the same recurring item cannot be recorded twice in one month');
 
 app.addDebt(data({ direction: 'receivable', contactId: '', person: 'عميل جديد', amount: '10', currency: 'USD', debtDate: '2026-09-15', dueDate: '', projectId: '', description: 'دفعة أخيرة', linkedIncomeId: '', recognizeExpense: '' }));
 const receivable = app.getState().debts.find(item => item.direction === 'receivable');
@@ -124,8 +138,9 @@ assert.ok(statementPdf.includes('الرصيد الافتتاحي') && statementP
 
 const restored = createApp(JSON.parse(storage.value)).app.getState();
 assert.equal(restored.clients.length, 2, 'saved client records reload from local storage');
-assert.equal(restored.projects.length, 1, 'saved projects reload from local storage');
+assert.equal(restored.projects.length, 2, 'saved projects reload from local storage');
 assert.equal(restored.debts.length, 2, 'saved debt and receivable records reload from local storage');
+assert.equal(restored.schedules.length, 1, 'saved monthly reminders reload from local storage');
 assert.equal(restored.transactions.length, app.getState().transactions.length, 'ledger records reload from local storage');
 
-console.log('Passed: entity/project persistence, contextual client links, custom categories, account-specific income/expenses, same-currency transfers, cross-currency exchange, dated debt accrual, partial settlement/collection, PDF content, and local restore.');
+console.log('Passed: entity/project persistence, client/project links across transactions and recurring items, custom categories, income/expenses, transfers, exchange, dated debt accrual, partial settlement/collection, PDF statements, and local restore.');
