@@ -18,6 +18,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.ValueCallback;
+import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -120,7 +121,12 @@ public class MainActivity extends Activity {
         documentView.setBackgroundColor(Color.WHITE);
         documentView.getSettings().setJavaScriptEnabled(false);
         documentView.setAlpha(0f);
-        rootLayout.addView(documentView, new FrameLayout.LayoutParams(1, 1));
+        documentView.setClickable(false);
+        documentView.setFocusable(false);
+        documentView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        rootLayout.addView(documentView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
         documentView.setWebViewClient(new WebViewClient() {
             private boolean printStarted;
 
