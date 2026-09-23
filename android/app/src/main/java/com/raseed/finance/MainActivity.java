@@ -5,6 +5,12 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintJob;
+import android.print.PrintManager;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -12,6 +18,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.ValueCallback;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import java.io.OutputStream;
@@ -20,6 +27,9 @@ public class MainActivity extends Activity {
     private static final int REQUEST_CREATE_FILE = 401;
     private static final int REQUEST_PICK_BACKUP = 402;
     private WebView webView;
+    private WebView printWebView;
+    private FrameLayout rootLayout;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private ValueCallback<Uri[]> uploadMessage;
     private String pendingFilename;
     private String pendingMimeType;
@@ -61,7 +71,11 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
-        setContentView(webView);
+        rootLayout = new FrameLayout(this);
+        rootLayout.addView(webView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(rootLayout);
         webView.loadUrl("file:///android_asset/www/index.html");
     }
 
@@ -79,6 +93,76 @@ public class MainActivity extends Activity {
                 startActivityForResult(intent, REQUEST_CREATE_FILE);
             });
         }
+
+        @JavascriptInterface
+        public void printHtml(String html, String filename) {
+            String safeTitle = filename == null ? "raseed-statement" : filename.replaceAll("[\\\\/:*?\"<>|]", "_");
+            if (safeTitle.endsWith(".pdf")) safeTitle = safeTitle.substring(0, safeTitle.length() - 4);
+            final String printTitle = safeTitle;
+            final String document = html == null ? "" : html;
+            runOnUiThread(() -> startPrint(document, printTitle));
+        }
+    }
+
+    private void startPrint(String html, String title) {
+        if (html.isEmpty() || rootLayout == null) {
+            Toast.makeText(this, "تعذر تجهيز الكشف للطباعة", Toast.LENGTH_LONG).show();
+            return;
+        }
+        PrintManager printManager = (PrintManager) getSystemService(PRINT_SERVICE);
+        if (printManager == null) {
+            Toast.makeText(this, "خدمة الطباعة غير متاحة على هذا الجهاز", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        WebView documentView = new WebView(this);
+        printWebView = documentView;
+        documentView.setBackgroundColor(Color.WHITE);
+        documentView.getSettings().setJavaScriptEnabled(false);
+        documentView.setAlpha(0f);
+        rootLayout.addView(documentView, new FrameLayout.LayoutParams(1, 1));
+        documentView.setWebViewClient(new WebViewClient() {
+            private boolean printStarted;
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                if (printStarted || isFinishing()) return;
+                printStarted = true;
+                try {
+                    PrintDocumentAdapter adapter = view.createPrintDocumentAdapter(title);
+                    PrintAttributes attributes = new PrintAttributes.Builder()
+                            .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                            .setResolution(new PrintAttributes.Resolution("raseed-300", "300 dpi", 300, 300))
+                            .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
+                            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                            .build();
+                    PrintJob job = printManager.print(title, adapter, attributes);
+                    watchPrintJob(job, view);
+                } catch (Exception error) {
+                    removePrintView(view);
+                    Toast.makeText(MainActivity.this, "تعذر فتح معاينة PDF", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+        documentView.loadDataWithBaseURL("file:///android_asset/www/", html, "text/html", "UTF-8", null);
+    }
+
+    private void watchPrintJob(PrintJob job, WebView view) {
+        mainHandler.postDelayed(() -> {
+            if (job.isCompleted() || job.isCancelled() || job.isFailed() || isFinishing()) {
+                removePrintView(view);
+            } else {
+                watchPrintJob(job, view);
+            }
+        }, 1500);
+    }
+
+    private void removePrintView(WebView view) {
+        if (view == null) return;
+        if (rootLayout != null) rootLayout.removeView(view);
+        view.stopLoading();
+        view.destroy();
+        if (printWebView == view) printWebView = null;
     }
 
     @Override
