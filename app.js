@@ -699,8 +699,18 @@
     $('.mobile-menu-backdrop').addEventListener('click', event => { if (event.target.classList.contains('mobile-menu-backdrop')) $('#mobileMenuRoot').innerHTML = ''; });
   }
   function matchingAccounts(currency) { return currencyAccounts(currency); }
+  function accountOptions(accounts, selected = '') {
+    return `<option value="">اختر الحساب</option>${accounts.map(account => `<option value="${account.id}" ${account.id === selected ? 'selected' : ''}>${escapeHTML(account.name)} · ${CURRENCIES[account.currency]}</option>`).join('')}`;
+  }
   function accountSelect(name, accounts, selected = '') {
-    return `<select name="${name}" required><option value="">اختر الحساب</option>${accounts.map(account => `<option value="${account.id}" ${account.id === selected ? 'selected' : ''}>${escapeHTML(account.name)} — ${account.currency}</option>`).join('')}</select>`;
+    return `<select name="${name}" required>${accountOptions(accounts, selected)}</select>`;
+  }
+  function bindModalFormSubmit(form, handler) {
+    if (!form) return;
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      handler(new FormData(form));
+    });
   }
   function clientOptions(selected = '') {
     return `<option value="">بدون جهة مرتبطة</option>${state.clients.map(client => `<option value="${client.id}" ${client.id === selected ? 'selected' : ''}>${escapeHTML(client.name)} · ${ROLE_NAMES[client.role] || ROLE_NAMES.client}</option>`).join('')}`;
@@ -719,20 +729,69 @@
     if (!['income', 'expense'].includes(kind) || !value) return;
     if (!state.categories.some(item => item.kind === kind && item.name.toLowerCase() === value.toLowerCase())) state.categories.push({ id: uid('cat'), kind, name: value });
   }
+  function transactionDestinationAccounts(kind, sourceAccountId) {
+    const source = accountById(sourceAccountId);
+    return state.accounts.filter(item => item.id !== sourceAccountId && (!source || (kind === 'transfer' ? item.currency === source.currency : kind === 'exchange' ? item.currency !== source.currency : true)));
+  }
+
   function transactionModal(projectId = '', initialKind = 'income') {
-    const accountGroups = state.accounts;
-    if (!accountGroups.length) return toast('أضف حسابًا أولًا قبل تسجيل العمليات.', 'error');
+    if (!state.accounts.length) return toast('أضف حسابًا أولًا قبل تسجيل العمليات.', 'error');
+    const initialAccount = currencyAccounts(state.currency)[0] || state.accounts[0];
     const categories = [...new Set([...categoryNames('income'), ...categoryNames('expense')])];
-    const typeRadios = `<div class="radio-row"><label class="radio-option"><input type="radio" name="kind" value="income" ${initialKind === 'income' ? 'checked' : ''}><span>${icon('income')} دخل</span></label><label class="radio-option expense"><input type="radio" name="kind" value="expense" ${initialKind === 'expense' ? 'checked' : ''}><span>${icon('expense')} مصروف</span></label><label class="radio-option"><input type="radio" name="kind" value="transfer" ${initialKind === 'transfer' ? 'checked' : ''}><span>${icon('exchange')} تحويل</span></label><label class="radio-option"><input type="radio" name="kind" value="exchange" ${initialKind === 'exchange' ? 'checked' : ''}><span>مصارفة</span></label></div>`;
-    const body = `<form class="modal-form" id="transactionForm"><div class="form-grid"><div class="form-field full"><label>نوع العملية</label>${typeRadios}</div><div class="form-field full"><label for="txTitle">وصف العملية <span class="required">*</span></label><input id="txTitle" name="title" required maxlength="90" placeholder="مثال: راتب سبتمبر أو دفعة تصميم شعار"/></div><div class="form-field" id="incomeSourceField"><label>مصدر الدخل</label><select name="sourceType">${Object.entries(INCOME_SOURCE_NAMES).map(([key, value]) => `<option value="${key}">${value}</option>`).join('')}</select></div><div class="form-field" id="accountField"><label>الحساب <span class="required">*</span></label>${accountSelect('accountId', accountGroups)}</div><div class="form-field" id="transferToField" hidden><label>إلى الحساب <span class="required">*</span></label>${accountSelect('toAccountId', accountGroups)}</div><div class="form-field" id="receivedAmountField" hidden><label>المبلغ المستلم <span class="required">*</span></label><input name="receivedAmount" type="number" min="0.01" step="any" inputmode="decimal" placeholder="0.00"/></div><div class="form-field" id="exchangeFeeField" hidden><label>رسوم الصراف (اختياري)</label><input name="fee" type="number" min="0" step="any" inputmode="decimal" value="0"/></div><div class="form-field"><label for="txAmount">${initialKind === 'transfer' || initialKind === 'exchange' ? 'المبلغ المرسل' : 'المبلغ'} <span class="required">*</span></label><input id="txAmount" name="amount" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="0.00"/><span class="helper" id="txCurrencyHint">اختر الحساب أولًا لمعرفة العملة.</span></div><div class="form-field"><label id="txDateLabel" for="txDate">التاريخ</label><input id="txDate" name="date" type="date" value="${toISO(Date.now())}" required/></div><div class="form-field" id="categoryField"><label for="txCategory">التصنيف</label><input id="txCategory" name="category" list="txCategoryOptions" placeholder="اختر أو اكتب تصنيفًا" value="${escapeHTML(categoryNames(initialKind === 'income' ? 'income' : 'expense')[0] || '')}"/><datalist id="txCategoryOptions">${categories.map(name => `<option value="${escapeHTML(name)}">`).join('')}</datalist></div><div class="form-field" id="linkedIncomeField" hidden><label>مصروف مرتبط بهذا الدخل</label><select name="linkedIncomeId">${incomeOptions()}</select></div><div class="form-field" id="clientField"><label for="txClient">العميل أو الجهة</label><select id="txClient" name="clientId">${clientOptions()}</select></div><div class="form-field" id="projectField"><label for="txProject">المشروع (اختياري)</label><select id="txProject" name="projectId">${projectOptions(projectId)}</select></div><div class="form-field" id="txPartyField"><label for="txParty">المستفيد أو المورد (اختياري)</label><input id="txParty" name="party" maxlength="70" placeholder="من استلم المبلغ؟"/></div><div class="form-field full"><label for="txNote">ملاحظة (اختياري)</label><textarea id="txNote" name="note" maxlength="220" placeholder="تفاصيل تساعدك عند مراجعة العملية"></textarea></div></div><p class="modal-note" id="txFormHint" style="margin:13px 0 0"></p><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button id="txSubmitLabel" type="submit" class="button button-primary">حفظ العملية</button></div></form>`;
-    showModal('إضافة عملية', 'سجّل دخلًا أو مصروفًا أو حركة بين الحسابات.', body);
+    const typeRadios = `<div class="radio-row tx-kind-row"><label class="radio-option"><input type="radio" name="kind" value="income" ${initialKind === 'income' ? 'checked' : ''}><span>${icon('income')} دخل</span></label><label class="radio-option expense"><input type="radio" name="kind" value="expense" ${initialKind === 'expense' ? 'checked' : ''}><span>${icon('expense')} مصروف</span></label><label class="radio-option"><input type="radio" name="kind" value="transfer" ${initialKind === 'transfer' ? 'checked' : ''}><span>${icon('exchange')} تحويل</span></label><label class="radio-option"><input type="radio" name="kind" value="exchange" ${initialKind === 'exchange' ? 'checked' : ''}><span>مصارفة</span></label></div>`;
+    const body = `<form class="modal-form transaction-form" id="transactionForm">
+      <div class="form-field full"><label>نوع العملية</label>${typeRadios}</div>
+      <div class="form-grid transaction-core">
+        <div class="form-field full"><label for="txTitle">البيان <span class="required">*</span></label><input id="txTitle" name="title" required maxlength="90" placeholder="مثال: دفعة تصميم هوية"/></div>
+        <div class="form-field" id="accountField"><label>الحساب <span class="required">*</span></label>${accountSelect('accountId', state.accounts, initialAccount.id)}</div>
+        <div class="form-field" id="transferToField" hidden><label id="txToLabel">إلى الحساب <span class="required">*</span></label>${accountSelect('toAccountId', state.accounts)}</div>
+        <div class="form-field"><label id="txAmountLabel" for="txAmount">المبلغ <span class="required">*</span></label><input id="txAmount" name="amount" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="0.00"/><span class="helper" id="txCurrencyHint">تُحدّد العملة من الحساب المختار.</span></div>
+        <div class="form-field" id="receivedAmountField" hidden><label id="txReceivedLabel">المبلغ المستلم <span class="required">*</span></label><input name="receivedAmount" type="number" min="0.01" step="any" inputmode="decimal" placeholder="0.00"/></div>
+        <div class="form-field" id="exchangeFeeField" hidden><label id="txFeeLabel">رسوم الصرّاف</label><input name="fee" type="number" min="0" step="any" inputmode="decimal" value="0"/><span class="helper">تخصم من المبلغ المرسل.</span></div>
+        <div class="form-field"><label id="txDateLabel" for="txDate">التاريخ</label><input id="txDate" name="date" type="date" value="${toISO(Date.now())}" required/></div>
+      </div>
+      <details class="tx-advanced" id="txAdvanced"><summary><strong>تفاصيل إضافية</strong><span>تصنيف وربط بعميل أو مشروع</span></summary><div class="form-grid">
+        <div class="form-field" id="incomeSourceField"><label>مصدر الدخل</label><select name="sourceType">${Object.entries(INCOME_SOURCE_NAMES).map(([key, value]) => `<option value="${key}">${value}</option>`).join('')}</select></div>
+        <div class="form-field" id="categoryField"><label for="txCategory">التصنيف</label><input id="txCategory" name="category" list="txCategoryOptions" placeholder="اختر أو اكتب تصنيفًا" value="${escapeHTML(categoryNames(initialKind === 'income' ? 'income' : 'expense')[0] || '')}"/><datalist id="txCategoryOptions">${categories.map(name => `<option value="${escapeHTML(name)}">`).join('')}</datalist></div>
+        <div class="form-field" id="linkedIncomeField" hidden><label>الدخل المرتبط بهذا المصروف</label><select name="linkedIncomeId">${incomeOptions()}</select></div>
+        <div class="form-field" id="clientField"><label for="txClient">العميل أو الجهة</label><select id="txClient" name="clientId">${clientOptions()}</select></div>
+        <div class="form-field" id="projectField"><label for="txProject">المشروع</label><select id="txProject" name="projectId">${projectOptions(projectId)}</select></div>
+        <div class="form-field" id="txPartyField"><label id="txPartyLabel" for="txParty">الطرف الآخر</label><input id="txParty" name="party" maxlength="70" placeholder="اختياري"/></div>
+        <div class="form-field full"><label for="txNote">ملاحظة</label><textarea id="txNote" name="note" maxlength="220" placeholder="اختياري"></textarea></div>
+      </div></details>
+      <p class="modal-note" id="txFormHint">أدخل البيان والمبلغ والحساب والتاريخ. التفاصيل الإضافية اختيارية.</p>
+      <div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button id="txSubmitLabel" type="submit" class="button button-primary">حفظ العملية</button></div>
+    </form>`;
+    showModal('إضافة عملية', 'أدخل البيانات الأساسية فقط؛ التفاصيل الإضافية اختيارية.', body);
     const form = $('#transactionForm');
+    bindModalFormSubmit(form, addTransaction);
     const presetProject = projectById(projectId);
     if (presetProject?.clientId) $('select[name=clientId]', form).value = presetProject.clientId;
+
+    function syncRelatedOptions(kind) {
+      const source = accountById($('select[name=accountId]', form).value);
+      const targetSelect = $('select[name=toAccountId]', form);
+      const selectedTarget = targetSelect.value;
+      const candidates = transactionDestinationAccounts(kind, source?.id || '');
+      targetSelect.innerHTML = accountOptions(candidates, selectedTarget);
+      if (selectedTarget && !candidates.some(item => item.id === selectedTarget)) targetSelect.value = '';
+      const projectSelect = $('select[name=projectId]', form);
+      const selectedProject = projectSelect.value;
+      projectSelect.innerHTML = projectOptions(selectedProject, source?.currency || '');
+      if (selectedProject && !state.projects.some(item => item.id === selectedProject && (!source || item.currency === source.currency))) projectSelect.value = '';
+      const project = projectById(projectSelect.value);
+      if (project?.clientId) $('select[name=clientId]', form).value = project.clientId;
+      const incomeSelect = $('select[name=linkedIncomeId]', form);
+      const selectedIncome = incomeSelect.value;
+      incomeSelect.innerHTML = incomeOptions(selectedIncome, source?.currency || '');
+      if (selectedIncome && !state.transactions.some(item => item.id === selectedIncome && item.currency === source?.currency)) incomeSelect.value = '';
+      return { source, target: accountById(targetSelect.value), candidates };
+    }
     function setKind() {
-      const kind = new FormData(form).get('kind');
+      const kind = new FormData(form).get('kind') || initialKind;
       const paired = ['transfer', 'exchange'].includes(kind);
-      $('#accountField').querySelector('label').textContent = paired ? 'من الحساب' : 'الحساب';
+      const { source, target, candidates } = syncRelatedOptions(kind);
+      $('#accountField').querySelector('label').innerHTML = `${paired ? 'من الحساب' : 'الحساب'} <span class="required">*</span>`;
       $('#transferToField').hidden = !paired;
       $('#receivedAmountField').hidden = kind !== 'exchange';
       $('#exchangeFeeField').hidden = kind !== 'exchange';
@@ -741,47 +800,29 @@
       $('#categoryField').hidden = paired;
       $('#projectField').hidden = paired;
       $('#clientField').hidden = paired;
-      $('#txPartyField').hidden = paired;
-      $('#txParty').previousElementSibling.textContent = kind === 'income' ? 'جهة أخرى (اختياري)' : kind === 'expense' ? 'المستفيد أو المورد (اختياري)' : 'اسم الصراف (اختياري)';
-      $('#txParty').placeholder = kind === 'income' ? 'جهة غير مسجلة' : kind === 'expense' ? 'من استلم المبلغ؟' : 'اسم محل الصرافة';
-      $('#linkedIncomeField').querySelector('label').textContent = 'الدخل الذي يغطي تكلفة هذا المصروف (اختياري)';
+      $('#txPartyField').hidden = !(kind === 'income' || kind === 'expense' || kind === 'exchange');
+      $('#txPartyLabel').textContent = kind === 'income' ? 'الجهة (اختياري)' : kind === 'expense' ? 'المستفيد أو المورد (اختياري)' : 'اسم الصرّاف (اختياري)';
+      $('#txParty').placeholder = kind === 'exchange' ? 'اسم محل الصرافة' : 'اختياري';
       $('#txDateLabel').textContent = kind === 'income' ? 'تاريخ استلام الدخل' : kind === 'expense' ? 'تاريخ دفع المصروف' : 'تاريخ الحركة';
-      $('#txTitle').placeholder = kind === 'income' ? 'مثال: راتب سبتمبر أو دفعة مشروع' : kind === 'expense' ? 'مثال: اشتراك برنامج أو أجرة تنفيذ' : kind === 'transfer' ? 'مثال: تحويل من الكريمي إلى كاش' : 'مثال: مصارفة من ريال سعودي إلى يمني';
-      $('#txFormHint').textContent = kind === 'income' ? 'سجّل المبلغ الذي وصل فعليًا إلى الحساب، واربطه بعميل أو مشروع عند الحاجة.' : kind === 'expense' ? 'يسجل هذا مصروفًا مدفوعًا الآن. إذا لم تدفعه بعد، سجّله التزامًا من صفحة المستحقات.' : kind === 'transfer' ? 'ينقل المبلغ بين حسابين بالعملة نفسها، ولا يحتسب دخلًا أو مصروفًا.' : 'سجّل المبلغ المرسل والمبلغ المستلم والرسوم؛ لكل حساب عملته المستقلة.';
-      $('#txSubmitLabel').textContent = kind === 'income' ? 'تسجيل الدخل' : kind === 'expense' ? 'تسجيل المصروف' : kind === 'transfer' ? 'تسجيل التحويل' : 'تسجيل المصارفة';
+      $('#txTitle').placeholder = kind === 'income' ? 'مثال: دفعة مشروع أو راتب' : kind === 'expense' ? 'مثال: اشتراك برنامج أو أجرة تنفيذ' : kind === 'transfer' ? 'مثال: تحويل بين حساباتي' : 'مثال: مصارفة ريال سعودي إلى يمني';
+      $('#txFormHint').textContent = kind === 'income' ? 'أدخل المبلغ الذي وصل للحساب. ربط العميل أو المشروع اختياري.' : kind === 'expense' ? 'سجّل ما دفعته فعلًا. المصروف غير المدفوع يُسجّل من صفحة المستحقات.' : kind === 'transfer' ? 'ينقل المبلغ بين حسابين بالعملة نفسها، ولا يُحسب دخلًا أو مصروفًا.' : 'أدخل المبلغ الخارج والداخل. الرسوم اختيارية وتُخصم من حساب الإرسال.';
+      $('#txSubmitLabel').textContent = kind === 'income' ? 'حفظ الدخل' : kind === 'expense' ? 'حفظ المصروف' : kind === 'transfer' ? 'حفظ التحويل' : 'حفظ المصارفة';
       $('select[name=accountId]', form).required = true;
       $('select[name=toAccountId]', form).required = paired;
       $('input[name=receivedAmount]', form).required = kind === 'exchange';
-      $('#txAmount').previousElementSibling.textContent = kind === 'transfer' || kind === 'exchange' ? 'المبلغ المرسل *' : 'المبلغ *';
-      const category = $('#txCategory');
-      if (!paired) $('#txCategoryOptions').innerHTML = categoryNames(kind).map(name => `<option value="${escapeHTML(name)}">`).join('');
-      if (kind === 'transfer' || kind === 'exchange') { category.value = kind === 'exchange' ? 'مصارفة عملات' : 'تحويل داخلي'; }
-      else if (!category.value || !categoryNames(kind).includes(category.value)) category.value = categoryNames(kind)[0] || (kind === 'income' ? 'دخل آخر' : 'مصروف آخر');
-      updateTxCurrencyHint();
-    }
-    function updateTxCurrencyHint() {
-      const kind = new FormData(form).get('kind');
-      const account = accountById($('select[name=accountId]', form).value);
-      const to = accountById($('select[name=toAccountId]', form).value);
-      $('#txCurrencyHint').textContent = account ? `المبلغ بعملة ${CURRENCY_NAMES[account.currency]}.` : 'اختر الحساب أولًا لمعرفة العملة.';
-      if (kind === 'transfer' && account && to && account.currency !== to.currency) $('#txCurrencyHint').textContent = 'التحويل الداخلي يتطلب حسابين بالعملة نفسها.';
-      if (kind === 'exchange' && account && to && account.currency === to.currency) $('#txCurrencyHint').textContent = 'اختر حسابًا بعملة مختلفة لتسجيل المصارفة.';
-      const projectSelect = $('select[name=projectId]', form);
-      const selectedProjectId = projectSelect.value;
-      projectSelect.innerHTML = projectOptions(selectedProjectId, account?.currency || '');
-      if (selectedProjectId && ![...projectSelect.options].some(option => option.value === selectedProjectId)) projectSelect.value = '';
-      const project = projectById(projectSelect.value);
-      if (project && account && project.currency !== account.currency) $('#txCurrencyHint').textContent = `عملة المشروع ${project.currency}; اختر حسابًا بالعملة نفسها.`;
-      const incomeSelect = $('select[name=linkedIncomeId]', form);
-      const selectedIncomeId = incomeSelect.value;
-      incomeSelect.innerHTML = incomeOptions(selectedIncomeId, account?.currency || '');
-      if (selectedIncomeId && !state.transactions.some(tx => tx.id === selectedIncomeId && tx.currency === account?.currency)) incomeSelect.value = '';
+      $('#txAmountLabel').innerHTML = `${kind === 'transfer' ? 'المبلغ المحوّل' : kind === 'exchange' ? 'المبلغ المرسل' : 'المبلغ'} <span class="required">*</span>`;
+      if (kind === 'transfer' || kind === 'exchange') $('#txCategory').value = kind === 'exchange' ? 'مصارفة عملات' : 'تحويل داخلي';
+      else if (!categoryNames(kind).includes($('#txCategory').value)) $('#txCategory').value = categoryNames(kind)[0] || (kind === 'income' ? 'دخل آخر' : 'مصروف آخر');
+      const currencyHint = source ? `المبلغ بعملة ${CURRENCY_NAMES[source.currency]} (${CURRENCIES[source.currency]}).` : 'اختر الحساب لتحديد العملة.';
+      const targetHint = paired && source && !candidates.length ? (kind === 'transfer' ? ' لا يوجد حساب آخر بهذه العملة؛ أضف حسابًا مطابق العملة.' : ' لا يوجد حساب بعملة مختلفة؛ أضف حسابًا بعملة أخرى.') : '';
+      $('#txCurrencyHint').textContent = currencyHint + targetHint;
+      $('#txReceivedLabel').innerHTML = `المبلغ المستلم بعملة ${CURRENCY_NAMES[target?.currency] || 'الحساب الآخر'} <span class="required">*</span>`;
+      $('#txFeeLabel').textContent = `رسوم الصرّاف بعملة ${CURRENCY_NAMES[source?.currency] || ''} (اختياري)`;
     }
     form.addEventListener('change', event => {
-      if (event.target.name === 'kind') setKind();
-      if (event.target.name === 'accountId' || event.target.name === 'toAccountId') updateTxCurrencyHint();
-      if (event.target.name === 'projectId') { const project = projectById(event.target.value); if (project?.clientId) $('select[name=clientId]', form).value = project.clientId; updateTxCurrencyHint(); }
-      if (event.target.name === 'clientId') { const project = projectById($('select[name=projectId]', form).value); if (project?.clientId && project.clientId !== event.target.value) $('select[name=projectId]', form).value = ''; updateTxCurrencyHint(); }
+      if (event.target.name === 'kind' || event.target.name === 'accountId' || event.target.name === 'toAccountId') setKind();
+      if (event.target.name === 'projectId') { const project = projectById(event.target.value); if (project?.clientId) $('select[name=clientId]', form).value = project.clientId; setKind(); }
+      if (event.target.name === 'clientId') { const project = projectById($('select[name=projectId]', form).value); if (project?.clientId && project.clientId !== event.target.value) $('select[name=projectId]', form).value = ''; setKind(); }
     });
     setKind();
   }
@@ -792,6 +833,7 @@
     const body = `<form class="modal-form" id="transactionEditForm"><input type="hidden" name="id" value="${tx.id}"/><div class="form-grid"><div class="form-field full"><label>وصف العملية <span class="required">*</span></label><input name="title" required maxlength="90" value="${escapeHTML(tx.title)}"/></div><div class="form-field full"><label>نوع العملية</label><select name="kind"><option value="income" ${tx.kind === 'income' ? 'selected' : ''}>دخل</option><option value="expense" ${tx.kind === 'expense' ? 'selected' : ''}>مصروف</option><option value="transfer" ${tx.kind === 'transfer' ? 'selected' : ''}>تحويل داخلي</option><option value="exchange" ${tx.kind === 'exchange' ? 'selected' : ''}>مصارفة عملات</option></select></div><div class="form-field" id="editIncomeSourceField"><label>مصدر الدخل</label><select name="sourceType">${Object.entries(INCOME_SOURCE_NAMES).map(([key, value]) => `<option value="${key}" ${(tx.sourceType || 'project') === key ? 'selected' : ''}>${value}</option>`).join('')}</select></div><div class="form-field" id="editFromField"><label id="editFromLabel">الحساب</label>${accountSelect('accountId', state.accounts, tx.kind === 'transfer' || tx.kind === 'exchange' ? tx.fromAccountId : tx.accountId)}</div><div class="form-field" id="editToField" ${tx.kind === 'transfer' || tx.kind === 'exchange' ? '' : 'hidden'}><label>إلى الحساب</label>${accountSelect('toAccountId', state.accounts, tx.toAccountId || '')}</div><div class="form-field" id="editReceivedField" ${tx.kind === 'exchange' ? '' : 'hidden'}><label>المبلغ المستلم</label><input name="receivedAmount" type="number" min="0.01" step="any" value="${tx.receivedAmount || ''}"/></div><div class="form-field" id="editFeeField" ${tx.kind === 'exchange' ? '' : 'hidden'}><label>رسوم الصراف</label><input name="fee" type="number" min="0" step="any" value="${tx.fee || 0}"/></div><div class="form-field"><label id="editAmountLabel">المبلغ <span class="required">*</span></label><input name="amount" type="number" min="0.01" step="any" value="${tx.amount}" required/></div><div class="form-field"><label id="editDateLabel">التاريخ</label><input name="date" type="date" value="${tx.date}" required/></div><div class="form-field" id="editCategoryField"><label>التصنيف</label><input name="category" list="editCategoryOptions" value="${escapeHTML(tx.category || '')}"/><datalist id="editCategoryOptions">${categories.map(name => `<option value="${escapeHTML(name)}">`).join('')}</datalist></div><div class="form-field" id="editLinkedIncomeField" ${tx.kind === 'expense' ? '' : 'hidden'}><label>مصروف مرتبط بهذا الدخل</label><select name="linkedIncomeId">${incomeOptions(tx.linkedIncomeId || '')}</select></div><div class="form-field" id="editClientField"><label>العميل أو الجهة</label><select name="clientId">${clientOptions(tx.clientId || '')}</select></div><div class="form-field" id="editProjectField"><label>المشروع (اختياري)</label><select name="projectId">${projectOptions(tx.projectId || '')}</select></div><div class="form-field" id="editPartyField"><label>المستفيد أو المورد</label><input name="party" maxlength="70" value="${escapeHTML(tx.party || '')}"/></div><div class="form-field full"><label>ملاحظة</label><textarea name="note" maxlength="220">${escapeHTML(tx.note || '')}</textarea></div></div><div class="modal-actions"><button type="button" class="button button-danger button-sm" data-action="delete-transaction-modal" data-id="${tx.id}">حذف العملية</button><span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ التغييرات</button></div></form>`;
     showModal('تعديل العملية', 'حدّث التفاصيل؛ سيعاد احتساب الحساب والتقارير.', body);
     const form = $('#transactionEditForm');
+    bindModalFormSubmit(form, updateTransaction);
     function setEditKind() {
       const kind = new FormData(form).get('kind');
       const paired = ['transfer', 'exchange'].includes(kind);
@@ -842,11 +884,13 @@
     const data = project || { name: '', clientId, amount: '', currency: state.currency, status: 'in_progress', dueDate: '', notes: '' };
     const body = `<form class="modal-form" id="projectForm"><input type="hidden" name="id" value="${project?.id || ''}"/><div class="form-grid"><div class="form-field full"><label>اسم المشروع <span class="required">*</span></label><input name="name" required maxlength="80" value="${escapeHTML(data.name)}" placeholder="مثال: تصميم هوية بصرية"/></div><div class="form-field"><label>العميل</label><select name="clientId">${clientOptions(data.clientId || '')}</select><span class="helper">يمكنك إدارة العملاء من صفحة العملاء.</span></div><div class="form-field"><label>الحالة</label><select name="status">${Object.entries(PROJECT_STATUS).map(([key, value]) => `<option value="${key}" ${data.status === key ? 'selected' : ''}>${value}</option>`).join('')}</select></div><div class="form-field"><label>قيمة الاتفاق</label><input name="amount" type="number" min="0" step="any" value="${data.amount}" placeholder="0"/></div><div class="form-field"><label>العملة</label><select name="currency">${currencyOptions(data.currency || state.currency)}</select></div><div class="form-field full"><label>موعد التسليم (اختياري)</label><input name="dueDate" type="date" value="${data.dueDate || ''}"/></div><div class="form-field full"><label>ملاحظات</label><textarea name="notes" maxlength="220">${escapeHTML(data.notes || '')}</textarea></div></div><div class="modal-actions">${project ? `<button type="button" class="button button-danger button-sm" data-action="delete-project" data-id="${project.id}">حذف المشروع</button>` : ''}<span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">${project ? 'حفظ التعديلات' : 'حفظ المشروع'}</button></div></form>`;
     showModal(project ? 'تعديل المشروع' : 'مشروع جديد', 'اربط الدفعات والمصروفات بالمشروع لعرض أدائه المالي.', body);
+    bindModalFormSubmit($('#projectForm'), saveProject);
   }
   function clientModal(client = null) {
     const data = client || { name: '', role: 'client', phone: '', email: '', notes: '' };
     const body = `<form class="modal-form" id="clientForm"><input type="hidden" name="id" value="${client?.id || ''}"/><div class="form-grid"><div class="form-field full"><label>اسم العميل أو الجهة <span class="required">*</span></label><input name="name" required maxlength="80" value="${escapeHTML(data.name)}" placeholder="الاسم أو اسم الشركة"/></div><div class="form-field"><label>نوع الجهة</label><select name="role">${Object.entries(ROLE_NAMES).map(([key, value]) => `<option value="${key}" ${(data.role || 'client') === key ? 'selected' : ''}>${value}</option>`).join('')}</select></div><div class="form-field"><label>رقم الهاتف</label><input name="phone" type="tel" maxlength="35" value="${escapeHTML(data.phone || '')}" placeholder="+967 أو +966"/></div><div class="form-field"><label>البريد الإلكتروني</label><input name="email" type="email" maxlength="90" value="${escapeHTML(data.email || '')}" placeholder="name@example.com"/></div><div class="form-field full"><label>ملاحظات</label><textarea name="notes" maxlength="220">${escapeHTML(data.notes || '')}</textarea></div></div><div class="modal-actions">${client ? `<button type="button" class="button button-danger button-sm" data-action="delete-client" data-id="${client.id}">حذف العميل</button>` : ''}<span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">${client ? 'حفظ التعديلات' : 'حفظ العميل'}</button></div></form>`;
     showModal(client ? 'تعديل بيانات العميل' : 'إضافة عميل', 'بيانات العميل تساعدك على ربط المشاريع والدفعات بشكل منظم.', body);
+    bindModalFormSubmit($('#clientForm'), saveClient);
   }
   function profileModal() {
     const body = `<form class="modal-form" id="profileForm"><div class="form-grid"><div class="form-field full"><label>اسمك أو اسم نشاطك</label><input name="name" required maxlength="60" value="${escapeHTML(state.profile?.name || '')}"/></div><div class="form-field"><label>عملة العرض الافتراضية</label><select name="currency">${currencyOptions(state.profile?.currency || state.currency)}</select></div></div><p class="modal-note">الملف الشخصي محفوظ محليًا على هذا الجهاز ولا يمثل تسجيل دخول سحابيًا.</p><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ الملف</button></div></form>`;
@@ -1302,12 +1346,8 @@
     if (event.target.id === 'onboardingProfileForm') { event.preventDefault(); const data = new FormData(event.target); state.profile = { ...state.profile, name: String(data.get('name') || '').trim(), currency: data.get('currency') }; state.currency = state.profile.currency; onboardingStep = 2; persistSetupDraft(); renderPage(); }
     else if (event.target.id === 'onboardingAccountForm') { event.preventDefault(); saveOnboardingAccount(new FormData(event.target)); }
     else if (event.target.id === 'onboardingDebtForm') { event.preventDefault(); saveOnboardingDebt(new FormData(event.target)); }
-    else if (event.target.id === 'transactionForm') { event.preventDefault(); addTransaction(new FormData(event.target)); }
-    else if (event.target.id === 'transactionEditForm') { event.preventDefault(); updateTransaction(new FormData(event.target)); }
     else if (event.target.id === 'accountForm') { event.preventDefault(); addAccount(new FormData(event.target)); }
     else if (event.target.id === 'accountEditForm') { event.preventDefault(); updateAccount(new FormData(event.target)); }
-    else if (event.target.id === 'projectForm') { event.preventDefault(); saveProject(new FormData(event.target)); }
-    else if (event.target.id === 'clientForm') { event.preventDefault(); saveClient(new FormData(event.target)); }
     else if (event.target.id === 'profileForm') { event.preventDefault(); const data = new FormData(event.target); state.profile = { ...state.profile, name: String(data.get('name') || '').trim(), currency: data.get('currency') }; state.currency = state.profile.currency; saveState(); closeModal(); renderPage(); toast('تم حفظ الملف الشخصي.'); }
     else if (event.target.id === 'debtForm') { event.preventDefault(); addDebt(new FormData(event.target)); }
     else if (event.target.id === 'debtPaymentForm') { event.preventDefault(); recordDebtPayment(new FormData(event.target)); }

@@ -8,20 +8,25 @@ assert.ok(source.includes(bootMarker), 'test seam still matches the application 
 
 function createApp(savedState = null) {
   const elements = new Map();
+  const documentListeners = {};
   const element = () => ({
     innerHTML: '', textContent: '', hidden: false, value: '', dataset: {}, style: {},
     classList: { add() {}, remove() {}, toggle() {} },
-    append() {}, remove() {}, addEventListener() {}, setAttribute() {}, focus() {},
+    listeners: {}, append() {}, remove() {},
+    addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); },
+    dispatch(type, event) { for (const callback of this.listeners[type] || []) callback(event); },
+    setAttribute() {}, focus() {},
     setSelectionRange() {}, querySelector() { return element(); },
     get options() { return []; }
   });
   const document = {
     querySelector(selector) { if (!elements.has(selector)) elements.set(selector, element()); return elements.get(selector); },
     querySelectorAll() { return []; },
-    addEventListener() {},
+    addEventListener(type, callback) { (documentListeners[type] ||= []).push(callback); },
     createElement() { return element(); },
     body: { append() {} }
   };
+  document.__listeners = documentListeners;
   const localStorage = { value: savedState ? JSON.stringify(savedState) : null,
     getItem() { return this.value; }, setItem(_key, value) { this.value = value; } };
   const window = { isSecureContext: false, scrollTo() {}, confirm() { return true; } };
@@ -31,11 +36,15 @@ function createApp(savedState = null) {
     setPage: page => { activePage = page; modalReturnPage = page; },
     setReport: (month, currency, account = 'all') => { state.dashboardMonth = month; reportCurrency = currency; reportAccount = account; activePage = 'reports'; },
     saveClient, saveProject, saveSchedule, recordSchedule, addTransaction, addDebt, recordDebtPayment,
+    transactionModal, transactionDestinationAccounts,
+    clickAction: (action, extra = {}) => { const target = { dataset: { action, ...extra }, closest() { return this; } }; for (const callback of document.__listeners.click || []) callback({ target }); },
+    getElement: selector => $(selector), getModalMarkup: () => $('#modalRoot').innerHTML,
     accountBalance, buildReportPdfHtml
   };
   if (!window.__skipInitialRender) renderPage();
   if (typeof window !== 'undefined' && window.isSecureContext`);
-  const context = { window, document, localStorage, Date, Intl, Math, JSON, String, Number, Boolean, Array, Object, RegExp, Set, Map, Promise, console, setTimeout() {}, clearTimeout() {} };
+  class TestFormData { constructor(form) { this.values = form.values || {}; } get(key) { return this.values[key] ?? ''; } }
+  const context = { window, document, localStorage, FormData: TestFormData, Date, Intl, Math, JSON, String, Number, Boolean, Array, Object, RegExp, Set, Map, Promise, console, setTimeout() {}, clearTimeout() {} };
   vm.runInNewContext(instrumented, context, { filename: 'app.js' });
   return { app: window.__raseedTest, storage: localStorage };
 }
@@ -58,15 +67,24 @@ const seed = {
 };
 const { app, storage } = createApp(seed);
 const data = values => ({ get: key => values[key] ?? '' });
+function submitForm(app, id, values) {
+  const form = app.getElement(`#${id}`);
+  form.values = values;
+  let prevented = false;
+  form.dispatch('submit', { target: form, preventDefault() { prevented = true; } });
+  assert.ok(prevented, `${id} prevents navigation and handles its own save`);
+}
 
 app.setPage('clients');
-app.saveClient(data({ name: 'وكالة النور', role: 'employer', phone: '770000000', email: '', notes: '' }));
+app.clickAction('new-client');
+submitForm(app, 'clientForm', { name: 'وكالة النور', role: 'employer', phone: '770000000', email: '', notes: '' });
 const agency = app.getState().clients.find(item => item.name === 'وكالة النور');
 assert.ok(agency, 'new client/entity is saved');
 assert.equal(app.getPage(), 'clients', 'client save returns to the client list');
 
 app.setPage('dashboard');
-app.saveProject(data({ name: 'تصميم المتجر', clientId: agency.id, amount: '500', currency: 'SAR', status: 'in_progress', dueDate: '', notes: '' }));
+app.clickAction('new-project');
+submitForm(app, 'projectForm', { name: 'تصميم المتجر', clientId: agency.id, amount: '500', currency: 'SAR', status: 'in_progress', dueDate: '', notes: '' });
 const project = app.getState().projects.find(item => item.name === 'تصميم المتجر');
 assert.ok(project, 'new project is saved');
 assert.equal(project.clientId, agency.id, 'project stays linked to its client');
@@ -76,7 +94,11 @@ app.saveProject(data({ name: 'مشروع يمني', clientId: agency.id, amount:
 const yerProject = app.getState().projects.find(item => item.name === 'مشروع يمني');
 
 app.setPage('projects');
-app.addTransaction(data({ kind: 'income', amount: '250', accountId: 'sar-main', toAccountId: '', receivedAmount: '', fee: '0', projectId: project.id, clientId: '', linkedIncomeId: '', title: 'دفعة أولى', category: 'دفعات عميل جديدة', sourceType: 'project', date: '2026-09-10', party: '', note: '' }));
+app.clickAction('new-transaction-for-project', { id: project.id });
+const incomeFormMarkup = app.getModalMarkup();
+const incomeAmountLabel = incomeFormMarkup.match(/id="txAmountLabel"[^>]*>(.*?)<\/label>/)?.[1] || '';
+assert.ok(incomeFormMarkup.includes('id="txAdvanced"') && incomeAmountLabel.includes('المبلغ') && !incomeAmountLabel.includes('المرسل'), 'income form keeps advanced links collapsed and shows only its main amount');
+submitForm(app, 'transactionForm', { kind: 'income', amount: '250', accountId: 'sar-main', toAccountId: '', receivedAmount: '', fee: '0', projectId: project.id, clientId: '', linkedIncomeId: '', title: 'دفعة أولى', category: 'دفعات عميل جديدة', sourceType: 'project', date: '2026-09-10', party: '', note: '' });
 const income = app.getState().transactions.find(item => item.title === 'دفعة أولى');
 assert.equal(income.clientId, agency.id, 'income inherits the selected project client');
 assert.ok(app.getState().categories.some(item => item.kind === 'income' && item.name === 'دفعات عميل جديدة'), 'typed category becomes manageable');
@@ -91,6 +113,11 @@ assert.ok(app.getState().categories.some(item => item.kind === 'expense' && item
 app.addTransaction(data({ kind: 'transfer', amount: '75', accountId: 'sar-main', toAccountId: 'sar-bank', receivedAmount: '', fee: '0', projectId: '', clientId: '', linkedIncomeId: '', title: 'نقل بين حسابين', category: 'تحويل داخلي', sourceType: '', date: '2026-09-13', party: '', note: '' }));
 assert.equal(app.accountBalance('sar-main'), 1125, 'transfer debits its source');
 assert.equal(app.accountBalance('sar-bank'), 575, 'transfer credits its destination');
+assert.deepEqual(Array.from(app.transactionDestinationAccounts('transfer', 'sar-main'), item => item.id), ['sar-bank'], 'transfer destinations only offer accounts with the same currency');
+assert.deepEqual(Array.from(app.transactionDestinationAccounts('exchange', 'yer-wallet'), item => item.id), ['sar-main', 'sar-bank', 'usd-cash'], 'currency exchange only offers accounts in another currency');
+app.clickAction('new-transaction', { kind: 'transfer' });
+const transferFormMarkup = app.getModalMarkup();
+assert.ok(transferFormMarkup.includes('id="transferToField"') && transferFormMarkup.includes('id="txAmountLabel"'), 'transfer form clearly separates source, destination, and transferred amount');
 
 app.addTransaction(data({ kind: 'exchange', amount: '100000', accountId: 'yer-wallet', toAccountId: 'usd-cash', receivedAmount: '20', fee: '100', projectId: '', clientId: '', linkedIncomeId: '', title: 'مصارفة', category: 'مصارفة عملات', sourceType: '', date: '2026-09-14', party: '', note: '' }));
 assert.equal(app.accountBalance('yer-wallet'), 99900, 'exchange subtracts amount and fee from source');
@@ -143,4 +170,4 @@ assert.equal(restored.debts.length, 2, 'saved debt and receivable records reload
 assert.equal(restored.schedules.length, 1, 'saved monthly reminders reload from local storage');
 assert.equal(restored.transactions.length, app.getState().transactions.length, 'ledger records reload from local storage');
 
-console.log('Passed: entity/project persistence, client/project links across transactions and recurring items, custom categories, income/expenses, transfers, exchange, dated debt accrual, partial settlement/collection, PDF statements, and local restore.');
+console.log('Passed: entity/project form submissions, simplified transaction forms, currency-filtered transfer and exchange destinations, ledger operations, PDF statements, and local restore.');

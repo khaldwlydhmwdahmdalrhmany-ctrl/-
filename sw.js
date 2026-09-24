@@ -1,4 +1,4 @@
-const CACHE_NAME = 'raseed-app-v5';
+const CACHE_NAME = 'raseed-app-v6';
 const base = new URL('./', self.registration.scope);
 const assets = [
   './',

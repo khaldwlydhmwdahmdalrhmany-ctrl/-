@@ -519,3 +519,15 @@ body{font-size:14px}
   .setup-footer .button-primary{flex:1}
   .setup-record>b{font-size:9px}
 }
+
+.tx-advanced{margin-top:14px;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
+.tx-advanced summary{min-height:45px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;color:var(--ink)}
+.tx-advanced summary::-webkit-details-marker{display:none}
+.tx-advanced summary strong{font-size:11px}
+.tx-advanced summary span{font-size:9px;color:var(--muted)}
+.tx-advanced summary:after{content:'+';font-size:18px;color:var(--red);line-height:1}
+.tx-advanced[open] summary{border-bottom:1px solid var(--line)}
+.tx-advanced[open] summary:after{content:'−'}
+.tx-advanced .form-grid{padding:13px}
+.transaction-form .tx-kind-row .radio-option span{height:42px}
+.transaction-form .modal-note{margin:12px 0 0}
