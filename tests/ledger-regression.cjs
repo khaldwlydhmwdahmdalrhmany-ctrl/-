@@ -120,6 +120,19 @@ assert.deepEqual(Array.from(app.transactionDestinationAccounts('exchange', 'yer-
 app.clickAction('new-transaction', { kind: 'transfer' });
 const transferFormMarkup = app.getModalMarkup();
 assert.ok(transferFormMarkup.includes('id="transferToField"') && transferFormMarkup.includes('id="txAmountLabel"'), 'transfer form clearly separates source, destination, and transferred amount');
+const txForm = app.getElement('#transactionForm');
+const fieldHidden = id => app.getElement(`#${id}`).hidden;
+function assertFieldsForTransactionKind(kind, expectedHidden, expectedVisible) {
+  txForm.values = { kind };
+  txForm.dispatch('change', { target: { name: 'kind' } });
+  for (const id of expectedHidden) assert.equal(fieldHidden(id), true, `${id} is hidden for ${kind}`);
+  for (const id of expectedVisible) assert.equal(fieldHidden(id), false, `${id} is visible for ${kind}`);
+  assert.equal(app.getElement('#txAdvanced summary span').textContent, kind === 'income' ? 'مصدر الدخل والعميل أو المشروع' : kind === 'expense' ? 'تصنيف وربط المصروف بدخل أو مشروع' : kind === 'transfer' ? 'ملاحظة اختيارية فقط' : 'اسم الصرّاف وملاحظة اختيارية', `${kind} has matching optional-details text`);
+}
+assertFieldsForTransactionKind('income', ['transferToField', 'receivedAmountField', 'exchangeFeeField', 'linkedIncomeField'], ['incomeSourceField', 'categoryField', 'clientField', 'projectField', 'txPartyField']);
+assertFieldsForTransactionKind('expense', ['transferToField', 'receivedAmountField', 'exchangeFeeField', 'incomeSourceField'], ['linkedIncomeField', 'categoryField', 'clientField', 'projectField', 'txPartyField']);
+assertFieldsForTransactionKind('transfer', ['receivedAmountField', 'exchangeFeeField', 'incomeSourceField', 'linkedIncomeField', 'categoryField', 'clientField', 'projectField', 'txPartyField'], ['transferToField']);
+assertFieldsForTransactionKind('exchange', ['incomeSourceField', 'linkedIncomeField', 'categoryField', 'clientField', 'projectField'], ['transferToField', 'receivedAmountField', 'exchangeFeeField', 'txPartyField']);
 
 app.addTransaction(data({ kind: 'exchange', amount: '100000', accountId: 'yer-wallet', toAccountId: 'usd-cash', receivedAmount: '20', fee: '100', projectId: '', clientId: '', linkedIncomeId: '', title: 'مصارفة', category: 'مصارفة عملات', sourceType: '', date: '2026-09-14', party: '', note: '' }));
 assert.equal(app.accountBalance('yer-wallet'), 99900, 'exchange subtracts amount and fee from source');

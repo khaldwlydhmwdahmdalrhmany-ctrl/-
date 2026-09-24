@@ -818,6 +818,7 @@
       $('#txCurrencyHint').textContent = currencyHint + targetHint;
       $('#txReceivedLabel').innerHTML = `المبلغ المستلم بعملة ${CURRENCY_NAMES[target?.currency] || 'الحساب الآخر'} <span class="required">*</span>`;
       $('#txFeeLabel').textContent = `رسوم الصرّاف بعملة ${CURRENCY_NAMES[source?.currency] || ''} (اختياري)`;
+      $('#txAdvanced summary span').textContent = kind === 'income' ? 'مصدر الدخل والعميل أو المشروع' : kind === 'expense' ? 'تصنيف وربط المصروف بدخل أو مشروع' : kind === 'transfer' ? 'ملاحظة اختيارية فقط' : 'اسم الصرّاف وملاحظة اختيارية';
     }
     form.addEventListener('change', event => {
       if (event.target.name === 'kind' || event.target.name === 'accountId' || event.target.name === 'toAccountId') setKind();
