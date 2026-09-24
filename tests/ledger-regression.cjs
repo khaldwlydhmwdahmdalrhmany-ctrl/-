@@ -154,10 +154,16 @@ app.recordDebtPayment(data({ debtId: payable.id, accountId: 'yer-wallet', amount
 assert.equal(app.getState().debts[0].remaining, 30000, 'partial settlement updates outstanding debt');
 assert.equal(app.accountBalance('yer-wallet'), 179900, 'partial payment reduces the selected account once');
 
-app.saveSchedule(data({ id: '', name: 'اشتراك خدمة المشروع', kind: 'expense', amount: '15000', currency: 'YER', category: 'خدمات', contactId: '', projectId: yerProject.id, day: '22', sourceType: '', notes: '' }));
+app.clickAction('new-schedule');
+submitForm(app, 'scheduleForm', { id: '', name: 'اشتراك خدمة المشروع', kind: 'expense', amount: '15000', currency: 'YER', category: 'خدمات', contactId: '', projectId: yerProject.id, day: '22', sourceType: '', notes: '' });
 const schedule = app.getState().schedules[0];
 assert.equal(schedule.contactId, agency.id, 'recurring item inherits its project customer');
-app.recordSchedule(data({ id: schedule.id, accountId: 'yer-wallet', amount: '15000', date: '2026-09-22', note: '' }));
+app.clickAction('edit-schedule', { id: schedule.id });
+submitForm(app, 'scheduleForm', { id: schedule.id, name: 'اشتراك خدمة المشروع المعدل', kind: 'expense', amount: '16000', currency: 'YER', category: 'خدمات', contactId: '', projectId: yerProject.id, day: '22', sourceType: '', notes: '' });
+assert.equal(schedule.name, 'اشتراك خدمة المشروع المعدل', 'recurring item edits save through its own form handler');
+assert.equal(schedule.amount, 16000, 'recurring item amount edits persist');
+app.clickAction('record-schedule', { id: schedule.id });
+submitForm(app, 'scheduleRecordForm', { id: schedule.id, accountId: 'yer-wallet', amount: '15000', date: '2026-09-22', note: '' });
 assert.equal(app.accountBalance('yer-wallet'), 164900, 'recorded recurring expense affects the balance once');
 const ledgerCountAfterSchedule = app.getState().transactions.length;
 app.recordSchedule(data({ id: schedule.id, accountId: 'yer-wallet', amount: '15000', date: '2026-09-23', note: '' }));
