@@ -552,6 +552,7 @@
     const data = category || { kind: 'expense', name: '' };
     const body = `<form class="modal-form" id="categoryForm"><input type="hidden" name="id" value="${category?.id || ''}"/><div class="form-grid"><div class="form-field"><label>نوع التصنيف</label><select name="kind"><option value="expense" ${data.kind === 'expense' ? 'selected' : ''}>مصروف</option><option value="income" ${data.kind === 'income' ? 'selected' : ''}>دخل</option></select></div><div class="form-field"><label>اسم التصنيف</label><input name="name" required maxlength="45" value="${escapeHTML(data.name)}" placeholder="مثال: رسوم تحويل، راتب"/></div></div><div class="modal-actions">${category ? `<button type="button" class="button button-danger button-sm" data-action="delete-category" data-id="${category.id}">حذف التصنيف</button>` : ''}<span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ التصنيف</button></div></form>`;
     showModal(category ? 'تعديل تصنيف' : 'إضافة تصنيف', 'تغيير الاسم يحدّث العمليات والبنود المتكررة المرتبطة به.', body);
+    bindModalFormSubmit($('#categoryForm'), saveCategory);
   }
   function saveCategory(formData) {
     const id = String(formData.get('id') || '');
@@ -562,6 +563,8 @@
     const category = state.categories.find(item => item.id === id);
     if (category) {
       const oldName = category.name; const oldKind = category.kind;
+      const isUsed = state.transactions.some(tx => tx.kind === oldKind && tx.category === oldName) || state.schedules.some(item => item.kind === oldKind && item.category === oldName);
+      if (isUsed && kind !== oldKind) return toast('لا يمكن تغيير نوع تصنيف مستخدم؛ غيّر اسمه فقط حتى تبقى تقارير الدخل والمصروف صحيحة.', 'error');
       Object.assign(category, { name, kind });
       state.transactions.forEach(tx => { if (tx.category === oldName && tx.kind === oldKind) tx.category = name; });
       state.schedules.forEach(item => { if (item.category === oldName && item.kind === oldKind) item.category = name; });
@@ -571,7 +574,7 @@
   function deleteCategory(id) {
     const category = state.categories.find(item => item.id === id);
     if (!category) return;
-    const used = state.transactions.some(tx => tx.category === category.name) || state.schedules.some(item => item.category === category.name);
+    const used = state.transactions.some(tx => tx.kind === category.kind && tx.category === category.name) || state.schedules.some(item => item.kind === category.kind && item.category === category.name);
     if (used) return toast('هذا التصنيف مرتبط بسجلات محفوظة. غيّر اسمه بدل حذفه.', 'error');
     if (!window.confirm(`حذف تصنيف «${category.name}»؟`)) return;
     state.categories = state.categories.filter(item => item.id !== id);
@@ -876,11 +879,13 @@
   function accountModal() {
     const body = `<form class="modal-form" id="accountForm"><div class="form-grid"><div class="form-field full"><label>اسم الحساب <span class="required">*</span></label><input name="name" required maxlength="55" placeholder="مثال: حساب بنك الكريمي"/></div><div class="form-field"><label>نوع الحساب</label><select name="kind"><option value="bank">حساب بنكي</option><option value="wallet">محفظة إلكترونية</option><option value="cash">نقدي</option><option value="exchange">حساب صرّاف</option></select></div><div class="form-field"><label>الجهة أو المزود</label><select name="provider">${providerOptions()}</select></div><div class="form-field"><label>العملة</label><select name="currency">${currencyOptions(state.currency)}</select></div><div class="form-field"><label>رصيد البداية</label><input name="openingBalance" type="number" step="any" value="0" placeholder="0"/></div></div><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ الحساب</button></div></form>`;
     showModal('إضافة حساب', 'أدخل رصيد البداية. سيبقى مستقلًا بعملته.', body);
+    bindModalFormSubmit($('#accountForm'), addAccount);
   }
 
   function editAccountModal(account) {
     const body = `<form class="modal-form" id="accountEditForm"><input type="hidden" name="id" value="${account.id}"/><div class="form-grid"><div class="form-field full"><label>اسم الحساب <span class="required">*</span></label><input name="name" required maxlength="55" value="${escapeHTML(account.name)}"/></div><div class="form-field"><label>نوع الحساب</label><select name="kind"><option value="bank" ${account.kind === 'bank' ? 'selected' : ''}>حساب بنكي</option><option value="wallet" ${account.kind === 'wallet' ? 'selected' : ''}>محفظة إلكترونية</option><option value="cash" ${account.kind === 'cash' ? 'selected' : ''}>نقدي</option><option value="exchange" ${account.kind === 'exchange' ? 'selected' : ''}>حساب صرّاف</option></select></div><div class="form-field"><label>الجهة أو المزود</label><select name="provider">${providerOptions(account.provider)}</select></div><div class="form-field"><label>العملة</label><input value="${CURRENCY_NAMES[account.currency]} (${account.currency})" disabled/></div><div class="form-field"><label>رصيد البداية</label><input name="openingBalance" type="number" step="any" value="${account.openingBalance}"/><span class="helper">تغيير رصيد البداية يعيد احتساب الرصيد الحالي مع كل العمليات.</span></div></div><div class="modal-actions"><button type="button" class="button button-danger button-sm" data-action="delete-account" data-id="${account.id}">حذف الحساب</button><span style="flex:1"></span><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ التغييرات</button></div></form>`;
     showModal('تعديل الحساب', 'حدّث الاسم أو نوع الحساب أو رصيد البداية.', body);
+    bindModalFormSubmit($('#accountEditForm'), updateAccount);
   }
 
   function projectModal(project = null, clientId = '') {
@@ -898,6 +903,11 @@
   function profileModal() {
     const body = `<form class="modal-form" id="profileForm"><div class="form-grid"><div class="form-field full"><label>اسمك أو اسم نشاطك</label><input name="name" required maxlength="60" value="${escapeHTML(state.profile?.name || '')}"/></div><div class="form-field"><label>عملة العرض الافتراضية</label><select name="currency">${currencyOptions(state.profile?.currency || state.currency)}</select></div></div><p class="modal-note">الملف الشخصي محفوظ محليًا على هذا الجهاز ولا يمثل تسجيل دخول سحابيًا.</p><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ الملف</button></div></form>`;
     showModal('ملفي المالي', 'حدّث بيانات المساحة التي تظهر في التطبيق.', body);
+    bindModalFormSubmit($('#profileForm'), formData => {
+      state.profile = { ...state.profile, name: String(formData.get('name') || '').trim(), currency: formData.get('currency') };
+      state.currency = state.profile.currency;
+      saveState(); closeModal(); renderPage(); toast('تم حفظ الملف الشخصي.');
+    });
   }
 
   function debtModal(direction = 'receivable', contactId = '') {
@@ -905,6 +915,7 @@
     const body = `<form class="modal-form" id="debtForm"><div class="form-grid"><div class="form-field full"><label>نوع السجل</label><div class="radio-row"><label class="radio-option"><input type="radio" name="direction" value="receivable" ${direction === 'receivable' ? 'checked' : ''}><span>مبلغ مستحق لي</span></label><label class="radio-option expense"><input type="radio" name="direction" value="payable" ${direction === 'payable' ? 'checked' : ''}><span>التزام عليّ</span></label></div></div><div class="form-field"><label>جهة مسجلة (اختياري)</label><select name="contactId"><option value="">إضافة جهة جديدة من الاسم</option>${state.clients.map(item => `<option value="${item.id}" ${item.id === contactId ? 'selected' : ''}>${escapeHTML(item.name)} · ${ROLE_NAMES[item.role] || ROLE_NAMES.client}</option>`).join('')}</select></div><div class="form-field"><label id="debtPersonLabel">${direction === 'payable' ? 'المتعاون أو المستفيد' : 'العميل أو الجهة'} <span class="required">*</span></label><input name="person" required maxlength="70" value="${escapeHTML(contact?.name || '')}" placeholder="اسم العميل أو المنفذ أو الوكالة"/></div><div class="form-field"><label>المبلغ الأصلي <span class="required">*</span></label><input name="amount" type="number" min="0.01" step="any" required placeholder="0.00"/></div><div class="form-field"><label>العملة</label><select name="currency">${currencyOptions(state.currency)}</select></div><div class="form-field"><label>تاريخ تسجيل المبلغ</label><input name="debtDate" type="date" value="${toISO(Date.now())}" required/></div><div class="form-field"><label>تاريخ الاستحقاق (اختياري)</label><input name="dueDate" type="date"/></div><div class="form-field"><label>المشروع (اختياري)</label><select name="projectId">${projectOptions('', state.currency)}</select></div><div class="form-field full"><label>سبب المبلغ أو تفاصيله</label><input name="description" maxlength="120" placeholder="مثال: دفعة متبقية من المشروع أو أجرة تنفيذ"/></div><div class="form-field full" id="debtLinkedIncomeField"><label>الدخل المرتبط بتكلفة هذا العمل</label><select name="linkedIncomeId">${incomeOptions('', state.currency)}</select></div><div class="form-field full" id="recognizeExpenseField"><label class="check-option"><input type="checkbox" name="recognizeExpense" checked/><span>احتساب الالتزام كمصروف على المشروع من تاريخ تسجيله</span></label><span class="helper">يظهر ضمن تكلفة المشروع والالتزامات، ولا يخصم من الحساب إلا عند تسجيل السداد.</span></div></div><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">حفظ السجل</button></div></form>`;
     showModal('إضافة مستحق أو التزام', 'اربطه بشخص أو شركة ومشروع، ثم سجّل الدفعات عند حدوثها.', body);
     const form = $('#debtForm');
+    bindModalFormSubmit(form, addDebt);
     function syncDebtFields() {
       const payable = new FormData(form).get('direction') === 'payable';
       $('#recognizeExpenseField').hidden = !payable;
@@ -946,6 +957,7 @@
     const accounts = matchingAccounts(debt.currency);
     const body = `<form class="modal-form" id="debtPaymentForm"><input type="hidden" name="debtId" value="${debt.id}"/><div class="form-grid"><div class="form-field full"><label>الجهة</label><input value="${escapeHTML(debt.person)} — متبقٍ ${nfmt(debt.remaining)} ${CURRENCIES[debt.currency]}" disabled/></div><div class="form-field"><label>مبلغ ${collection ? 'التحصيل' : 'السداد'} <span class="required">*</span></label><input name="amount" type="number" min="0.01" max="${debt.remaining}" step="any" required value="${debt.remaining}"/></div><div class="form-field"><label>الحساب <span class="required">*</span></label>${accountSelect('accountId', accounts)}</div><div class="form-field"><label>التاريخ</label><input name="date" type="date" value="${toISO(Date.now())}" required/></div><div class="form-field full"><label>ملاحظة (اختياري)</label><input name="note" maxlength="120" placeholder="دفعة أولى، سداد كامل..."/></div></div><p class="modal-note" style="margin-top:12px">سيُحدّث المبلغ المتبقي في سجل الدين ورصيد الحساب المختار.</p><div class="modal-actions"><button type="button" class="button button-secondary" data-action="close-modal">إلغاء</button><button type="submit" class="button button-primary">تأكيد ${collection ? 'التحصيل' : 'السداد'}</button></div></form>`;
     showModal(collection ? 'تسجيل تحصيل' : 'تسجيل سداد', 'سجّل دفعة على هذا الدين.', body);
+    bindModalFormSubmit($('#debtPaymentForm'), recordDebtPayment);
   }
 
   function csvCell(value) { return `"${String(value ?? '').replace(/"/g, '""')}"`; }
@@ -1349,12 +1361,6 @@
     if (event.target.id === 'onboardingProfileForm') { event.preventDefault(); const data = new FormData(event.target); state.profile = { ...state.profile, name: String(data.get('name') || '').trim(), currency: data.get('currency') }; state.currency = state.profile.currency; onboardingStep = 2; persistSetupDraft(); renderPage(); }
     else if (event.target.id === 'onboardingAccountForm') { event.preventDefault(); saveOnboardingAccount(new FormData(event.target)); }
     else if (event.target.id === 'onboardingDebtForm') { event.preventDefault(); saveOnboardingDebt(new FormData(event.target)); }
-    else if (event.target.id === 'accountForm') { event.preventDefault(); addAccount(new FormData(event.target)); }
-    else if (event.target.id === 'accountEditForm') { event.preventDefault(); updateAccount(new FormData(event.target)); }
-    else if (event.target.id === 'profileForm') { event.preventDefault(); const data = new FormData(event.target); state.profile = { ...state.profile, name: String(data.get('name') || '').trim(), currency: data.get('currency') }; state.currency = state.profile.currency; saveState(); closeModal(); renderPage(); toast('تم حفظ الملف الشخصي.'); }
-    else if (event.target.id === 'debtForm') { event.preventDefault(); addDebt(new FormData(event.target)); }
-    else if (event.target.id === 'debtPaymentForm') { event.preventDefault(); recordDebtPayment(new FormData(event.target)); }
-    else if (event.target.id === 'categoryForm') { event.preventDefault(); saveCategory(new FormData(event.target)); }
   });
   document.addEventListener('input', event => {
     if (event.target.id === 'transactionSearch') { transactionFilters.query = event.target.value; const cursor = event.target.selectionStart; renderPage(); const replacement = $('#transactionSearch'); replacement?.focus(); replacement?.setSelectionRange(cursor, cursor); }

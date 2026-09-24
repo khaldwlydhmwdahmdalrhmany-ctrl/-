@@ -11,18 +11,31 @@ assert.ok(source.includes(bootMarker), 'test seam still matches the application 
 function createApp(savedState = null) {
   const elements = new Map();
   const documentListeners = {};
-  const element = () => ({
-    innerHTML: '', textContent: '', hidden: false, value: '', dataset: {}, style: {},
-    classList: { add() {}, remove() {}, toggle() {} },
-    listeners: {}, append() {}, remove() {},
-    addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); },
-    dispatch(type, event) { for (const callback of this.listeners[type] || []) callback(event); },
-    setAttribute() {}, focus() {},
-    setSelectionRange() {}, querySelector() { return element(); },
-    get options() { return []; }
-  });
+  const element = selector => {
+    const node = {
+      textContent: '', hidden: false, value: '', dataset: {}, style: {},
+      classList: { add() {}, remove() {}, toggle() {} },
+      listeners: {}, append() {}, remove() {},
+      addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); },
+      dispatch(type, event) { for (const callback of this.listeners[type] || []) callback(event); },
+      setAttribute() {}, focus() {},
+      setSelectionRange() {}, querySelector() { return element(); },
+      get options() { return []; }
+    };
+    let html = '';
+    Object.defineProperty(node, 'innerHTML', {
+      get() { return html; },
+      set(value) {
+        html = value;
+        if (selector === '#modalRoot') {
+          for (const key of elements.keys()) if (key !== '#modalRoot') elements.delete(key);
+        }
+      }
+    });
+    return node;
+  };
   const document = {
-    querySelector(selector) { if (!elements.has(selector)) elements.set(selector, element()); return elements.get(selector); },
+    querySelector(selector) { if (!elements.has(selector)) elements.set(selector, element(selector)); return elements.get(selector); },
     querySelectorAll() { return []; },
     addEventListener(type, callback) { (documentListeners[type] ||= []).push(callback); },
     createElement() { return element(); },
@@ -140,7 +153,8 @@ assert.equal(app.accountBalance('usd-cash'), 120, 'exchange credits received amo
 
 const yerIncome = { id: 'yer-income', kind: 'income', amount: 100000, currency: 'YER', accountId: 'yer-wallet', title: 'دخل يمني', date: '2026-09-09', category: 'عمل ومشاريع', projectId: yerProject.id, clientId: agency.id, party: agency.name, createdAt: '2026-09-09T10:00:00.000Z' };
 app.getState().transactions.push(yerIncome);
-app.addDebt(data({ direction: 'payable', contactId: '', person: 'اسم متجاوز لا يجب اعتماده', amount: '50000', currency: 'YER', debtDate: '2026-09-11', dueDate: '2026-09-20', projectId: yerProject.id, description: 'أجرة تنفيذ', linkedIncomeId: yerIncome.id, recognizeExpense: 'on' }));
+app.clickAction('new-debt', { direction: 'payable' });
+submitForm(app, 'debtForm', { direction: 'payable', contactId: '', person: 'اسم متجاوز لا يجب اعتماده', amount: '50000', currency: 'YER', debtDate: '2026-09-11', dueDate: '2026-09-20', projectId: yerProject.id, description: 'أجرة تنفيذ', linkedIncomeId: yerIncome.id, recognizeExpense: 'on' });
 const payable = app.getState().debts[0];
 const accrued = app.getState().transactions.find(item => item.debtId === payable.id && item.isAccrued);
 assert.equal(payable.person, agency.name, 'selected contact is the authoritative debt party');
@@ -150,13 +164,14 @@ assert.equal(payable.createdAt, '2026-09-11', 'debt registration date is stored'
 assert.equal(accrued.date, '2026-09-11', 'unpaid cost uses the debt registration date');
 assert.equal(app.accountBalance('yer-wallet'), 199900, 'an unpaid obligation does not affect a cash balance');
 
-app.recordDebtPayment(data({ debtId: payable.id, accountId: 'yer-wallet', amount: '20000', date: '2026-09-18', note: 'دفعة جزئية' }));
+app.clickAction('debt-payment', { id: payable.id });
+submitForm(app, 'debtPaymentForm', { debtId: payable.id, accountId: 'yer-wallet', amount: '20000', date: '2026-09-18', note: 'دفعة جزئية' });
 assert.equal(app.getState().debts[0].remaining, 30000, 'partial settlement updates outstanding debt');
 assert.equal(app.accountBalance('yer-wallet'), 179900, 'partial payment reduces the selected account once');
 
 app.clickAction('new-schedule');
 submitForm(app, 'scheduleForm', { id: '', name: 'اشتراك خدمة المشروع', kind: 'expense', amount: '15000', currency: 'YER', category: 'خدمات', contactId: '', projectId: yerProject.id, day: '22', sourceType: '', notes: '' });
-const schedule = app.getState().schedules[0];
+    const schedule = app.getState().schedules[0];
 assert.equal(schedule.contactId, agency.id, 'recurring item inherits its project customer');
 app.clickAction('edit-schedule', { id: schedule.id });
 submitForm(app, 'scheduleForm', { id: schedule.id, name: 'اشتراك خدمة المشروع المعدل', kind: 'expense', amount: '16000', currency: 'YER', category: 'خدمات', contactId: '', projectId: yerProject.id, day: '22', sourceType: '', notes: '' });
@@ -169,17 +184,68 @@ const ledgerCountAfterSchedule = app.getState().transactions.length;
 app.recordSchedule(data({ id: schedule.id, accountId: 'yer-wallet', amount: '15000', date: '2026-09-23', note: '' }));
 assert.equal(app.getState().transactions.length, ledgerCountAfterSchedule, 'the same recurring item cannot be recorded twice in one month');
 
-app.addDebt(data({ direction: 'receivable', contactId: '', person: 'عميل جديد', amount: '10', currency: 'USD', debtDate: '2026-09-15', dueDate: '', projectId: '', description: 'دفعة أخيرة', linkedIncomeId: '', recognizeExpense: '' }));
+app.clickAction('new-schedule');
+submitForm(app, 'scheduleForm', { id: '', name: 'راتب الوكالة', kind: 'income', amount: '50', currency: 'USD', category: 'دفعات عميل جديدة', contactId: agency.id, projectId: '', day: '25', sourceType: 'retainer', notes: '' });
+const incomeSchedule = app.getState().schedules.find(item => item.name === 'راتب الوكالة');
+assert.ok(incomeSchedule, 'a recurring income item saves through its form handler');
+assert.equal(incomeSchedule.contactId, agency.id, 'recurring income keeps its linked contact');
+app.clickAction('record-schedule', { id: incomeSchedule.id });
+submitForm(app, 'scheduleRecordForm', { id: incomeSchedule.id, accountId: 'usd-cash', amount: '50', date: '2026-09-25', note: '' });
+assert.equal(app.accountBalance('usd-cash'), 170, 'recorded recurring income credits the selected account');
+assert.equal(app.getState().transactions.find(item => item.scheduleId === incomeSchedule.id).kind, 'income', 'recurring income creates an income ledger entry');
+
+app.clickAction('new-debt', { direction: 'receivable' });
+submitForm(app, 'debtForm', { direction: 'receivable', contactId: '', person: 'عميل جديد', amount: '10', currency: 'USD', debtDate: '2026-09-15', dueDate: '', projectId: '', description: 'دفعة أخيرة', linkedIncomeId: '', recognizeExpense: '' });
 const receivable = app.getState().debts.find(item => item.direction === 'receivable');
-app.recordDebtPayment(data({ debtId: receivable.id, accountId: 'usd-cash', amount: '4', date: '2026-09-19', note: '' }));
+app.clickAction('debt-payment', { id: receivable.id });
+submitForm(app, 'debtPaymentForm', { debtId: receivable.id, accountId: 'usd-cash', amount: '4', date: '2026-09-19', note: '' });
 assert.equal(receivable.remaining, 6, 'receivable balance updates after partial collection');
-assert.equal(app.accountBalance('usd-cash'), 124, 'collection credits the chosen account');
+assert.equal(app.accountBalance('usd-cash'), 174, 'collection credits the chosen account');
+
+const incomeCategory = app.getState().categories.find(item => item.kind === 'income' && item.name === 'دفعات عميل جديدة');
+app.setPage('categories');
+app.clickAction('edit-category', { id: incomeCategory.id });
+submitForm(app, 'categoryForm', { id: incomeCategory.id, kind: 'income', name: 'دفعات عملاء ومشاريع' });
+assert.equal(income.category, 'دفعات عملاء ومشاريع', 'renaming a category updates its existing transactions');
+assert.equal(incomeSchedule.category, 'دفعات عملاء ومشاريع', 'renaming a category updates linked recurring items');
+app.clickAction('edit-category', { id: incomeCategory.id });
+submitForm(app, 'categoryForm', { id: incomeCategory.id, kind: 'expense', name: 'تصنيف غير مناسب' });
+assert.equal(incomeCategory.kind, 'income', 'a used category cannot be moved across income and expense types');
+app.clickAction('close-modal');
+app.clickAction('delete-category', { id: incomeCategory.id });
+assert.ok(app.getState().categories.includes(incomeCategory), 'used categories are protected from deletion');
+
+app.clickAction('new-category');
+submitForm(app, 'categoryForm', { id: '', kind: 'expense', name: 'مصاريف معدات' });
+const categoryToDelete = app.getState().categories.find(item => item.kind === 'expense' && item.name === 'مصاريف معدات');
+assert.ok(categoryToDelete, 'a new category saves from the category form');
+app.clickAction('delete-category', { id: categoryToDelete.id });
+assert.ok(!app.getState().categories.includes(categoryToDelete), 'an unused category can be deleted');
+const expenseCategoryCount = app.getState().categories.filter(item => item.kind === 'expense' && item.name === 'استضافة').length;
+app.clickAction('new-category');
+submitForm(app, 'categoryForm', { id: '', kind: 'expense', name: 'استضافة' });
+assert.equal(app.getState().categories.filter(item => item.kind === 'expense' && item.name === 'استضافة').length, expenseCategoryCount, 'duplicate categories are rejected');
+app.clickAction('close-modal');
+
+app.clickAction('new-account');
+submitForm(app, 'accountForm', { name: 'حساب مؤقت', kind: 'cash', provider: '', currency: 'USD', openingBalance: '12' });
+const temporaryAccount = app.getState().accounts.find(item => item.name === 'حساب مؤقت');
+assert.ok(temporaryAccount, 'a new account saves through its form handler');
+assert.equal(app.accountBalance(temporaryAccount.id), 12, 'account opening balance is applied');
+app.clickAction('edit-account', { id: temporaryAccount.id });
+submitForm(app, 'accountEditForm', { id: temporaryAccount.id, name: 'حساب مؤقت معدل', kind: 'cash', provider: '', openingBalance: '22' });
+assert.equal(temporaryAccount.name, 'حساب مؤقت معدل', 'account edits save through their form handler');
+assert.equal(app.accountBalance(temporaryAccount.id), 22, 'editing opening balance recalculates the account');
+app.clickAction('edit-account', { id: temporaryAccount.id });
+submitForm(app, 'accountEditForm', { id: temporaryAccount.id, name: 'حساب مؤقت معدل', kind: 'cash', provider: '', openingBalance: '0' });
+app.clickAction('delete-account', { id: temporaryAccount.id });
+assert.ok(!app.getState().accounts.includes(temporaryAccount), 'an unused zero-balance account can be deleted');
 
 app.setReport('2026-09', 'SAR');
 const summaryPdf = app.buildReportPdfHtml();
 assert.ok(summaryPdf.includes('كشف مالي منظم') && summaryPdf.includes('صافي الدخل بعد تكاليفه المرتبطة'), 'PDF includes a complete Arabic summary');
 assert.ok(summaryPdf.includes('استضافة المتجر') && summaryPdf.includes('المستحقات المفتوحة حتى تاريخ الإصدار'), 'PDF includes transactions and open obligations');
-assert.ok(summaryPdf.includes('دفعات عميل جديدة'), 'PDF retains custom categorization');
+assert.ok(summaryPdf.includes('دفعات عملاء ومشاريع'), 'PDF retains renamed custom categorization');
 app.setReport('2026-09', 'SAR', 'sar-main');
 const statementPdf = app.buildReportPdfHtml();
 assert.ok(statementPdf.includes('الرصيد الافتتاحي') && statementPdf.includes('الرصيد الختامي'), 'account PDF includes opening and closing balances');
@@ -188,7 +254,11 @@ const restored = createApp(JSON.parse(storage.value)).app.getState();
 assert.equal(restored.clients.length, 2, 'saved client records reload from local storage');
 assert.equal(restored.projects.length, 2, 'saved projects reload from local storage');
 assert.equal(restored.debts.length, 2, 'saved debt and receivable records reload from local storage');
-assert.equal(restored.schedules.length, 1, 'saved monthly reminders reload from local storage');
+assert.equal(restored.schedules.length, 2, 'saved monthly reminders reload from local storage');
 assert.equal(restored.transactions.length, app.getState().transactions.length, 'ledger records reload from local storage');
 
-console.log('Passed: entity/project form submissions, simplified transaction forms, currency-filtered transfer and exchange destinations, ledger operations, PDF statements, and local restore.');
+app.clickAction('profile');
+submitForm(app, 'profileForm', { name: 'ملفي بعد الاختبار', currency: 'USD' });
+assert.equal(app.getState().profile.name, 'ملفي بعد الاختبار', 'profile saves through its form handler');
+
+console.log('Passed: category/account/profile/debt/schedule/entity form submissions, transaction field visibility and ledger flows, category rename/delete integrity, PDF statements, and local restore.');
