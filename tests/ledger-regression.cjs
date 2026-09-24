@@ -3,6 +3,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const source = fs.readFileSync('app.js', 'utf8');
+const styles = fs.readFileSync('styles.css', 'utf8');
+assert.match(styles, /\[hidden\]\s*\{\s*display:\s*none\s*!important\s*\}/, 'hidden form fields stay hidden despite author display rules');
 const bootMarker = '  renderPage();\n  if (typeof window !== \'undefined\' && window.isSecureContext';
 assert.ok(source.includes(bootMarker), 'test seam still matches the application bootstrap');
 
